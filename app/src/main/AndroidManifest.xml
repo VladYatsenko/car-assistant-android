@@ -19,8 +19,7 @@
         tools:ignore="GoogleAppIndexingWarning">
 
         <activity
-            android:name=".ui.activities.DetectorActivity"
-            android:label="@string/activity_name_detection">
+            android:name=".ui.activities.DetectorActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
