@@ -17,19 +17,19 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <org.tensorflow.lite.examples.detection.customview.AutoFitTextureView
+    <com.carassistant.utils.customview.AutoFitTextureView
         android:id="@+id/texture"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true" />
 
-    <org.tensorflow.lite.examples.detection.customview.RecognitionScoreView
+    <com.carassistant.utils.customview.RecognitionScoreView
         android:id="@+id/results"
         android:layout_width="match_parent"
         android:layout_height="112dp"
         android:layout_alignParentTop="true" />
 
-    <org.tensorflow.lite.examples.detection.customview.OverlayView
+    <com.carassistant.utils.customview.OverlayView
         android:id="@+id/debug_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

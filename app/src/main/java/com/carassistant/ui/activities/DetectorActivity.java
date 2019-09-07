@@ -1,20 +1,4 @@
-/*
- * Copyright 2019 The TensorFlow Authors. All Rights Reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package org.tensorflow.lite.examples.detection;
+package com.carassistant.ui.activities;
 
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -30,22 +14,22 @@ import android.os.SystemClock;
 import android.util.Size;
 import android.util.TypedValue;
 import android.widget.Toast;
+
+import com.carassistant.R;
+import com.carassistant.utils.customview.OverlayView;
+import com.carassistant.utils.customview.OverlayView.DrawCallback;
+import com.carassistant.utils.env.BorderedText;
+import com.carassistant.utils.env.ImageUtils;
+import com.carassistant.utils.env.Logger;
+import com.carassistant.tflite.Classifier;
+import com.carassistant.tflite.TFLiteObjectDetectionAPIModel;
+import com.carassistant.tflite.tracking.MultiBoxTracker;
+
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
-import org.tensorflow.lite.examples.detection.customview.OverlayView;
-import org.tensorflow.lite.examples.detection.customview.OverlayView.DrawCallback;
-import org.tensorflow.lite.examples.detection.env.BorderedText;
-import org.tensorflow.lite.examples.detection.env.ImageUtils;
-import org.tensorflow.lite.examples.detection.env.Logger;
-import org.tensorflow.lite.examples.detection.tflite.Classifier;
-import org.tensorflow.lite.examples.detection.tflite.TFLiteObjectDetectionAPIModel;
-import org.tensorflow.lite.examples.detection.tracking.MultiBoxTracker;
 
-/**
- * An activity that uses a TensorFlowMultiBoxDetector and ObjectTracker to detect and then track
- * objects.
- */
+
 public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
   private static final Logger LOGGER = new Logger();
 
@@ -54,7 +38,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
   private static final boolean TF_OD_API_IS_QUANTIZED = true;
   private static final String TF_OD_API_MODEL_FILE = "detect_2.tflite";
   private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap_.txt";
-  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
+//  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
   // Minimum detection confidence to track a detection.
   private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
   private static final boolean MAINTAIN_ASPECT = false;
@@ -188,19 +172,19 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             paint.setStyle(Style.STROKE);
             paint.setStrokeWidth(2.0f);
 
-            float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-            switch (MODE) {
-              case TF_OD_API:
-                minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-                break;
-            }
+//            float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+//            switch (MODE) {
+//              case TF_OD_API:
+//                minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
+//                break;
+//            }
 
             final List<Classifier.Recognition> mappedRecognitions =
                 new LinkedList<Classifier.Recognition>();
 
             for (final Classifier.Recognition result : results) {
               final RectF location = result.getLocation();
-              if (location != null && result.getConfidence() >= minimumConfidence) {
+              if (location != null && result.getConfidence() >= MINIMUM_CONFIDENCE_TF_OD_API) {
                 canvas.drawRect(location, paint);
 
                 cropToFrameTransform.mapRect(location);
@@ -240,9 +224,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
   // Which detection model to use: by default uses Tensorflow Object Detection API frozen
   // checkpoints.
-  private enum DetectorMode {
-    TF_OD_API;
-  }
+//  private enum DetectorMode {
+//    TF_OD_API;
+//  }
 
   @Override
   protected void setUseNNAPI(final boolean isChecked) {

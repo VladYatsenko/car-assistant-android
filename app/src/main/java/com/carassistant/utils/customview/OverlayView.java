@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-package org.tensorflow.lite.examples.detection.customview;
+package com.carassistant.utils.customview;
 
 import android.content.Context;
 import android.graphics.Canvas;

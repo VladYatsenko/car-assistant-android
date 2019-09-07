@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-package org.tensorflow.lite.examples.detection.env;
+package com.carassistant.utils.env;
 
 import android.graphics.Canvas;
 import android.graphics.Color;
