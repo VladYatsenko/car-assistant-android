@@ -222,12 +222,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     return DESIRED_PREVIEW_SIZE;
   }
 
-  // Which detection model to use: by default uses Tensorflow Object Detection API frozen
-  // checkpoints.
-//  private enum DetectorMode {
-//    TF_OD_API;
-//  }
-
   @Override
   protected void setUseNNAPI(final boolean isChecked) {
     runInBackground(() -> detector.setUseNNAPI(isChecked));
