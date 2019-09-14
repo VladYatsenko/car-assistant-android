@@ -59,6 +59,8 @@ import com.carassistant.utils.env.Logger;
 
 import java.nio.ByteBuffer;
 
+import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+
 public abstract class CameraActivity extends AppCompatActivity
     implements OnImageAvailableListener,
         Camera.PreviewCallback,
@@ -69,6 +71,7 @@ public abstract class CameraActivity extends AppCompatActivity
   private static final int PERMISSIONS_REQUEST = 1;
 
   private static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
+  private static final String PERMISSION_STORAGE = Manifest.permission.WRITE_EXTERNAL_STORAGE;
   protected int previewWidth = 0;
   protected int previewHeight = 0;
   private boolean debug = false;
@@ -360,16 +363,18 @@ public abstract class CameraActivity extends AppCompatActivity
     }
   }
 
-  private void requestPermission() {
+  protected void requestPermission() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      if (shouldShowRequestPermissionRationale(PERMISSION_CAMERA)) {
+      if (shouldShowRequestPermissionRationale(PERMISSION_CAMERA)||
+              shouldShowRequestPermissionRationale(PERMISSION_STORAGE) ||
+              shouldShowRequestPermissionRationale(ACCESS_FINE_LOCATION)) {
         Toast.makeText(
                 CameraActivity.this,
                 "Camera permission is required for this demo",
                 Toast.LENGTH_LONG)
             .show();
       }
-      requestPermissions(new String[] {PERMISSION_CAMERA}, PERMISSIONS_REQUEST);
+      requestPermissions(new String[] {PERMISSION_CAMERA, PERMISSION_STORAGE, ACCESS_FINE_LOCATION}, PERMISSIONS_REQUEST);
     }
   }
 

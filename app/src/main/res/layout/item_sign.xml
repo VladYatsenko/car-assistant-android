@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingStart="32dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="32dp"
+    android:paddingBottom="4dp">
+
+    <androidx.appcompat.widget.AppCompatImageView
+        android:id="@+id/signImg"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:src="@drawable/chair" />
+
+    <TextView
+        android:id="@+id/signName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/gotham_rounded_medium"
+        android:textSize="24sp"
+        android:textColor="@color/cod_gray"
+        android:layout_marginStart="16dp"
+        android:text="Speed limit 80 km/h"/>
+
+</LinearLayout>

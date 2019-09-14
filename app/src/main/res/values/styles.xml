@@ -1,11 +1,12 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorPrimaryDark">@color/porcelain</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="android:windowLightStatusBar" tools:ignore="NewApi">true</item>
     </style>
 
     <style name="AppThemeToolbar" parent="Theme.AppCompat.Light.NoActionBar">
