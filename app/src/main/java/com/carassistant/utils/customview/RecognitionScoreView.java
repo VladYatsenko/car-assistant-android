@@ -22,7 +22,7 @@ import android.util.AttributeSet;
 import android.util.TypedValue;
 import android.view.View;
 import java.util.List;
-import com.carassistant.tflite.Classifier.Recognition;
+import com.carassistant.tflite.detection.Classifier.Recognition;
 
 public class RecognitionScoreView extends View implements ResultsView {
   private static final float TEXT_SIZE_DIP = 14;

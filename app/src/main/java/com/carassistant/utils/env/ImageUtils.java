@@ -15,6 +15,7 @@ limitations under the License.
 
 package com.carassistant.utils.env;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.os.Environment;
@@ -50,8 +51,8 @@ public class ImageUtils {
    *
    * @param bitmap The bitmap to save.
    */
-  public static void saveBitmap(final Bitmap bitmap) {
-    saveBitmap(bitmap, "preview.png");
+  public static void saveBitmap(final Bitmap bitmap, Context context) {
+    saveBitmap(bitmap, "preview.png", context);
   }
 
   /**
@@ -60,18 +61,18 @@ public class ImageUtils {
    * @param bitmap The bitmap to save.
    * @param filename The location to save the bitmap to.
    */
-  public static void saveBitmap(final Bitmap bitmap, final String filename) {
-    final String root =
-        Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "tensorflow";
-    LOGGER.i("Saving %dx%d bitmap to %s.", bitmap.getWidth(), bitmap.getHeight(), root);
-    final File myDir = new File(root);
-
-    if (!myDir.mkdirs()) {
-      LOGGER.i("Make dir failed");
-    }
+  public static void saveBitmap(final Bitmap bitmap, final String filename, Context context) {
+//    final String root = context.getFilesDir();
+//        Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + "tensorflow";
+//    LOGGER.i("Saving %dx%d bitmap to %s.", bitmap.getWidth(), bitmap.getHeight(), root);
+//    final File myDir = new File(root);
+//
+//    if (!myDir.mkdirs()) {
+//      LOGGER.i("Make dir failed");
+//    }
 
     final String fname = filename;
-    final File file = new File(myDir, fname);
+    final File file = new File(context.getExternalCacheDir(), fname);
     if (file.exists()) {
       file.delete();
     }

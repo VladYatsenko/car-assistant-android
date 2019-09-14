@@ -36,7 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-import com.carassistant.tflite.Classifier.Recognition;
+import com.carassistant.tflite.detection.Classifier.Recognition;
 
 /** A tracker that handles non-max suppression and matches existing objects to new detections. */
 public class MultiBoxTracker {

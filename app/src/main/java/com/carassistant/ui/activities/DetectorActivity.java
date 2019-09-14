@@ -1,234 +1,144 @@
 package com.carassistant.ui.activities;
 
+import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.Config;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Matrix;
-import android.graphics.Paint;
-import android.graphics.Paint.Style;
-import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.media.ImageReader.OnImageAvailableListener;
-import android.os.SystemClock;
+import android.net.Uri;
+import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Size;
 import android.util.TypedValue;
-import android.widget.Toast;
+import android.widget.Button;
+import android.widget.ImageView;
+
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AppCompatActivity;
 
 import com.carassistant.R;
-import com.carassistant.utils.customview.OverlayView;
-import com.carassistant.utils.customview.OverlayView.DrawCallback;
-import com.carassistant.utils.env.BorderedText;
-import com.carassistant.utils.env.ImageUtils;
-import com.carassistant.utils.env.Logger;
-import com.carassistant.tflite.Classifier;
-import com.carassistant.tflite.TFLiteObjectDetectionAPIModel;
+import com.carassistant.tflite.detection.Classifier;
+import com.carassistant.tflite.detection.adapter.DetectionHolder;
+import com.carassistant.tflite.detection.adapter.DetectionListener;
 import com.carassistant.tflite.tracking.MultiBoxTracker;
+import com.carassistant.utils.customview.OverlayView;
+import com.carassistant.utils.env.BorderedText;
+import com.carassistant.utils.env.Logger;
+import com.theartofdev.edmodo.cropper.CropImage;
+import com.theartofdev.edmodo.cropper.CropImageView;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 
 
-public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
-  private static final Logger LOGGER = new Logger();
+public class DetectorActivity extends AppCompatActivity {
+    private static final Logger LOGGER = new Logger();
 
-  // Configuration values for the prepackaged SSD model.
-  private static final int TF_OD_API_INPUT_SIZE = 300;
-  private static final boolean TF_OD_API_IS_QUANTIZED = true;
-  private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
-  private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap.txt";
-//  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
-  // Minimum detection confidence to track a detection.
-  private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
-  private static final boolean MAINTAIN_ASPECT = false;
-  private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
-  private static final boolean SAVE_PREVIEW_BITMAP = false;
-  private static final float TEXT_SIZE_DIP = 10;
-  OverlayView trackingOverlay;
-  private Integer sensorOrientation;
+    ImageView img;
+    Button open, detect;
 
-  private Classifier detector;
+    private DetectionHolder detectionHolder;
+    private MultiBoxTracker tracker;
+    private BorderedText borderedText;
 
-  private long lastProcessingTimeMs;
-  private Bitmap rgbFrameBitmap = null;
-  private Bitmap croppedBitmap = null;
-  private Bitmap cropCopyBitmap = null;
+    OverlayView trackingOverlay;
 
-  private boolean computingDetection = false;
+    Bitmap b;
 
-  private long timestamp = 0;
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_image);
 
-  private Matrix frameToCropTransform;
-  private Matrix cropToFrameTransform;
-
-  private MultiBoxTracker tracker;
-
-  private BorderedText borderedText;
-
-  @Override
-  public void onPreviewSizeChosen(final Size size, final int rotation) {
-    final float textSizePx =
-        TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
-    borderedText = new BorderedText(textSizePx);
-    borderedText.setTypeface(Typeface.MONOSPACE);
-
-    tracker = new MultiBoxTracker(this);
-
-    int cropSize = TF_OD_API_INPUT_SIZE;
-
-    try {
-      detector =
-          TFLiteObjectDetectionAPIModel.create(
-              getAssets(),
-              TF_OD_API_MODEL_FILE,
-              TF_OD_API_LABELS_FILE,
-              TF_OD_API_INPUT_SIZE,
-              TF_OD_API_IS_QUANTIZED);
-      cropSize = TF_OD_API_INPUT_SIZE;
-    } catch (final IOException e) {
-      e.printStackTrace();
-      LOGGER.e(e, "Exception initializing classifier!");
-      Toast toast =
-          Toast.makeText(
-              getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
-      toast.show();
-      finish();
-    }
-
-    previewWidth = size.getWidth();
-    previewHeight = size.getHeight();
-
-    sensorOrientation = rotation - getScreenOrientation();
-    LOGGER.i("Camera orientation relative to screen canvas: %d", sensorOrientation);
-
-    LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
-    rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Config.ARGB_8888);
-    croppedBitmap = Bitmap.createBitmap(cropSize, cropSize, Config.ARGB_8888);
-
-    frameToCropTransform =
-        ImageUtils.getTransformationMatrix(
-            previewWidth, previewHeight,
-            cropSize, cropSize,
-            sensorOrientation, MAINTAIN_ASPECT);
-
-    cropToFrameTransform = new Matrix();
-    frameToCropTransform.invert(cropToFrameTransform);
-
-    trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
-    trackingOverlay.addCallback(
-        new DrawCallback() {
-          @Override
-          public void drawCallback(final Canvas canvas) {
-            tracker.draw(canvas);
-            if (isDebug()) {
-              tracker.drawDebug(canvas);
-            }
-          }
+        img = findViewById(R.id.image);
+        open = findViewById(R.id.openBtn);
+        open.setOnClickListener(v -> {
+            CropImage.activity()
+                    .setGuidelines(CropImageView.Guidelines.ON)
+                    .start(this);
         });
 
-    tracker.setFrameConfiguration(previewWidth, previewHeight, sensorOrientation);
-  }
-
-  @Override
-  protected void processImage() {
-    ++timestamp;
-    final long currTimestamp = timestamp;
-    trackingOverlay.postInvalidate();
-
-    // No mutex needed as this method is not reentrant.
-    if (computingDetection) {
-      readyForNextImage();
-      return;
-    }
-    computingDetection = true;
-    LOGGER.i("Preparing image " + currTimestamp + " for detection in bg thread.");
-
-    rgbFrameBitmap.setPixels(getRgbBytes(), 0, previewWidth, 0, 0, previewWidth, previewHeight);
-
-    readyForNextImage();
-
-    final Canvas canvas = new Canvas(croppedBitmap);
-    canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
-    // For examining the actual TF input.
-    if (SAVE_PREVIEW_BITMAP) {
-      ImageUtils.saveBitmap(croppedBitmap);
-    }
-
-    runInBackground(
-        new Runnable() {
-          @Override
-          public void run() {
-            LOGGER.i("Running detection on image " + currTimestamp);
-            final long startTime = SystemClock.uptimeMillis();
-            final List<Classifier.Recognition> results = detector.recognizeImage(croppedBitmap);
-            lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
-
-            cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
-            final Canvas canvas = new Canvas(cropCopyBitmap);
-            final Paint paint = new Paint();
-            paint.setColor(Color.RED);
-            paint.setStyle(Style.STROKE);
-            paint.setStrokeWidth(2.0f);
-
-//            float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-//            switch (MODE) {
-//              case TF_OD_API:
-//                minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-//                break;
-//            }
-
-            final List<Classifier.Recognition> mappedRecognitions =
-                new LinkedList<Classifier.Recognition>();
-
-            for (final Classifier.Recognition result : results) {
-              final RectF location = result.getLocation();
-              if (location != null && result.getConfidence() >= MINIMUM_CONFIDENCE_TF_OD_API) {
-                canvas.drawRect(location, paint);
-
-                cropToFrameTransform.mapRect(location);
-
-                result.setLocation(location);
-                mappedRecognitions.add(result);
-              }
+        detect = findViewById(R.id.detect);
+        detect.setOnClickListener(v -> {
+            if (b != null)
+                detection(b);
+        });
+        detectionHolder = new DetectionHolder(this);
+        detectionHolder.setDetectionListener(new DetectionListener() {
+            @Override
+            public void trackResults(List<Classifier.Recognition> mappedRecognitions, long currTimestamp) {
+                tracker.trackResults(mappedRecognitions, currTimestamp);
+                trackingOverlay.postInvalidate();
             }
 
-            tracker.trackResults(mappedRecognitions, currTimestamp);
-            trackingOverlay.postInvalidate();
-
-            computingDetection = false;
-
-            runOnUiThread(
-                new Runnable() {
-                  @Override
-                  public void run() {
-                    showFrameInfo(previewWidth + "x" + previewHeight);
-                    showCropInfo(cropCopyBitmap.getWidth() + "x" + cropCopyBitmap.getHeight());
-                    showInference(lastProcessingTimeMs + "ms");
-                  }
+            @Override
+            public void showInfo(String frameInfo, String cropInfo, String processingTime) {
+                runOnUiThread(() -> {
+//                    showFrameInfo(frameInfo);
+//                    showCropInfo(cropInfo);
+//                    showInference(processingTime);
                 });
-          }
+            }
+
+            @Override
+            public void setTrackerFrameConfiguration(int previewWidth, int previewHeight, int sensorOrientation) {
+//                DetectorActivity.this.previewWidth = previewWidth;
+//                DetectorActivity.this.previewHeight = previewHeight;
+//                DetectorActivity.this.sensorOrientation = sensorOrientation;
+
+                trackingOverlay = findViewById(R.id.tracking_overlay);
+                trackingOverlay.addCallback(
+                        canvas -> {
+                            tracker.draw(canvas);
+                        });
+
+                tracker.setFrameConfiguration(previewWidth, previewHeight, sensorOrientation);
+            }
         });
-  }
+    }
 
-  @Override
-  protected int getLayoutId() {
-    return R.layout.camera_connection_fragment_tracking;
-  }
+    private void detection(Bitmap bitmap) {
 
-  @Override
-  protected Size getDesiredPreviewFrameSize() {
-    return DESIRED_PREVIEW_SIZE;
-  }
+        final float textSizePx =
+                TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, 10, getResources().getDisplayMetrics());
+        borderedText = new BorderedText(textSizePx);
+        borderedText.setTypeface(Typeface.MONOSPACE);
 
-  @Override
-  protected void setUseNNAPI(final boolean isChecked) {
-    runInBackground(() -> detector.setUseNNAPI(isChecked));
-  }
+        tracker = new MultiBoxTracker(this);
 
-  @Override
-  protected void setNumThreads(final int numThreads) {
-    runInBackground(() -> detector.setNumThreads(numThreads));
-  }
+        detectionHolder.setupDetectionAdapter(new Size(bitmap.getWidth(), bitmap.getHeight()), 0, 0);
+
+        detectionHolder.processImage(bitmap);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        detectionHolder.setHandler();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        detectionHolder.destroyHandler();
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == CropImage.CROP_IMAGE_ACTIVITY_REQUEST_CODE) {
+            CropImage.ActivityResult result = CropImage.getActivityResult(data);
+            if (resultCode == RESULT_OK) {
+                Uri resultUri = result.getUri();
+                img.setImageURI(resultUri);
+                try {
+                    b = MediaStore.Images.Media.getBitmap(this.getContentResolver(), resultUri);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+
+            } else if (resultCode == CropImage.CROP_IMAGE_ACTIVITY_RESULT_ERROR_CODE) {
+                Exception error = result.getError();
+            }
+        }
+    }
 }
