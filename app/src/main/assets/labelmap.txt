@@ -8,7 +8,7 @@ dont stop
 no parking
 dont move
 dont enter
-no overtaking
+no overtake
 speed limit 5
 speed limit 10
 speed limit 20

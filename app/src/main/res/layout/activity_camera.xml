@@ -19,7 +19,7 @@
             android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:alpha="0"
+            android:alpha="0.5"
             tools:context="org.tensorflow.demo.CameraActivity" />
 
         <androidx.appcompat.widget.Toolbar

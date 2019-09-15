@@ -2,9 +2,7 @@ package com.carassistant.ui.activities;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.app.Dialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -22,6 +20,8 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.media.ImageReader.OnImageAvailableListener;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -30,16 +30,19 @@ import android.text.style.RelativeSizeSpan;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
-import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.carassistant.R;
 import com.carassistant.model.entity.Data;
+import com.carassistant.model.entity.SignEntity;
 import com.carassistant.service.GpsServices;
+import com.carassistant.ui.adapter.SignAdapter;
 import com.carassistant.utils.customview.OverlayView;
 import com.carassistant.utils.customview.OverlayView.DrawCallback;
 import com.carassistant.utils.env.BorderedText;
@@ -50,6 +53,7 @@ import com.carassistant.tflite.TFLiteObjectDetectionAPIModel;
 import com.carassistant.tflite.tracking.MultiBoxTracker;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -68,7 +72,7 @@ public class DetectorActivity extends CameraActivity
     private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap.txt";
     //  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
     // Minimum detection confidence to track a detection.
-    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.5f;
+    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.7f;
     private static final boolean MAINTAIN_ASPECT = false;
     private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
     private static final boolean SAVE_PREVIEW_BITMAP = false;
@@ -101,59 +105,18 @@ public class DetectorActivity extends CameraActivity
     private boolean firstfix;
 
     private TextView currentSpeed, distance;
+    private RecyclerView signRecycler;
+    private SignAdapter adapter;
+    private ArrayList<SignEntity> signs;
+
+    private Ringtone ringtone = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setupLocation();
-    }
 
-    private void setupLocation() {
-
-        data = new Data(onGpsServiceUpdate);
-
-//        satellite = (TextView) findViewById(R.id.satellite);
-//        status = (TextView) findViewById(R.id.status);
-//        accuracy = (TextView) findViewById(R.id.accuracy);
-//        maxSpeed = (TextView) findViewById(R.id.maxSpeed);
-//        averageSpeed = (TextView) findViewById(R.id.averageSpeed);
-        distance = (TextView) findViewById(R.id.distanceValueTxt);
-        currentSpeed = (TextView) findViewById(R.id.currentSpeedTxt);
-//
-        onGpsServiceUpdate = () -> {
-            double maxSpeedTemp = data.getMaxSpeed();
-            double distanceTemp = data.getDistance();
-            double averageTemp = data.getAverageSpeed();
-
-            String speedUnits = "km/h";
-            String distanceUnits;
-            if (distanceTemp <= 1000.0) {
-                distanceUnits = "m";
-            } else {
-                distanceTemp /= 1000.0;
-                distanceUnits = "km";
-            }
-
-            SpannableString s = new SpannableString(String.format("%.0f %s", maxSpeedTemp, speedUnits));
-            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
-//            maxSpeed.setText(s);
-
-            s = new SpannableString(String.format("%.0f %s", averageTemp, speedUnits));
-            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
-//            averageSpeed.setText(s);
-
-            s = new SpannableString(String.format("%.3f %s", distanceTemp, distanceUnits));
-            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
-            distance.setText(s);
-        };
-
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        data.setRunning(true);
-        data.setFirstTime(true);
-    }
-
-    public static Data getData() {
-        return data;
+        setupRecycler();
     }
 
     @Override
@@ -176,6 +139,9 @@ public class DetectorActivity extends CameraActivity
         }
 
         mLocationManager.addGpsStatusListener(this);
+
+        ringtone = RingtoneManager.getRingtone(getApplicationContext(),
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
     }
 
     @Override
@@ -183,6 +149,8 @@ public class DetectorActivity extends CameraActivity
         super.onPause();
         mLocationManager.removeUpdates(this);
         mLocationManager.removeGpsStatusListener(this);
+
+        ringtone = null;
     }
 
     @Override
@@ -291,12 +259,6 @@ public class DetectorActivity extends CameraActivity
                         paint.setStyle(Style.STROKE);
                         paint.setStrokeWidth(2.0f);
 
-//            float minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-//            switch (MODE) {
-//              case TF_OD_API:
-//                minimumConfidence = MINIMUM_CONFIDENCE_TF_OD_API;
-//                break;
-//            }
 
                         final List<Classifier.Recognition> mappedRecognitions =
                                 new LinkedList<Classifier.Recognition>();
@@ -310,6 +272,8 @@ public class DetectorActivity extends CameraActivity
 
                                 result.setLocation(location);
                                 mappedRecognitions.add(result);
+
+                                runOnUiThread(() -> updateSignList(result));
                             }
                         }
 
@@ -318,18 +282,88 @@ public class DetectorActivity extends CameraActivity
 
                         computingDetection = false;
 
-                        runOnUiThread(
-                                new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        showFrameInfo(previewWidth + "x" + previewHeight);
-                                        showCropInfo(cropCopyBitmap.getWidth() + "x" + cropCopyBitmap.getHeight());
-                                        showInference(lastProcessingTimeMs + "ms");
-                                    }
-                                });
+                        runOnUiThread(() -> {
+                            showFrameInfo(previewWidth + "x" + previewHeight);
+                            showCropInfo(cropCopyBitmap.getWidth() + "x" + cropCopyBitmap.getHeight());
+                            showInference(lastProcessingTimeMs + "ms");
+                        });
                     }
                 });
     }
+
+    private void updateSignList(Classifier.Recognition result) {
+        adapter.setSign(getSignImage(result));
+        playNotification();
+    }
+
+    private void playNotification(){
+        try {
+            if (!ringtone.isPlaying()) {
+                ringtone.play();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private void setupLocation() {
+
+        data = new Data(onGpsServiceUpdate);
+
+//        satellite = (TextView) findViewById(R.id.satellite);
+//        status = (TextView) findViewById(R.id.status);
+//        accuracy = (TextView) findViewById(R.id.accuracy);
+//        maxSpeed = (TextView) findViewById(R.id.maxSpeed);
+//        averageSpeed = (TextView) findViewById(R.id.averageSpeed);
+        distance = (TextView) findViewById(R.id.distanceValueTxt);
+        currentSpeed = (TextView) findViewById(R.id.currentSpeedTxt);
+//
+        onGpsServiceUpdate = () -> {
+            double maxSpeedTemp = data.getMaxSpeed();
+            double distanceTemp = data.getDistance();
+            double averageTemp = data.getAverageSpeed();
+
+            String speedUnits = "km/h";
+            String distanceUnits;
+            if (distanceTemp <= 1000.0) {
+                distanceUnits = "m";
+            } else {
+                distanceTemp /= 1000.0;
+                distanceUnits = "km";
+            }
+
+            SpannableString s = new SpannableString(String.format("%.0f %s", maxSpeedTemp, speedUnits));
+            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
+//            maxSpeed.setText(s);
+
+            s = new SpannableString(String.format("%.0f %s", averageTemp, speedUnits));
+            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
+//            averageSpeed.setText(s);
+
+            s = new SpannableString(String.format("%.3f %s", distanceTemp, distanceUnits));
+            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
+            distance.setText(s);
+        };
+
+        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        data.setRunning(true);
+        data.setFirstTime(true);
+    }
+
+    private void setupRecycler() {
+        adapter = new SignAdapter(this);
+        signs = new ArrayList<>();
+
+        signRecycler = findViewById(R.id.signRecycler);
+        signRecycler.setAdapter(adapter);
+        signRecycler.setLayoutManager(new LinearLayoutManager(this));
+    }
+
+    public static Data getData() {
+        return data;
+    }
+
 
     @Override
     protected int getLayoutId() {
@@ -408,9 +442,9 @@ public class DetectorActivity extends CameraActivity
             double speed = location.getSpeed() * 3.6;
             String units = "km/h";
 
-            SpannableString s = new SpannableString(String.format(Locale.ENGLISH, "%.0f %s", speed, units));
-            s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
-            currentSpeed.setText(s);
+//            SpannableString s = new SpannableString(String.format(Locale.ENGLISH, "%.0f %s", speed, units));
+//            s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
+            currentSpeed.setText(String.valueOf(speed));
         }
     }
 
@@ -437,9 +471,57 @@ public class DetectorActivity extends CameraActivity
         dialog.setCancelable(false);
         dialog.setOnShowListener(arg ->
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                      .setTextColor(ContextCompat.getColor(this, R.color.cod_gray))
+                        .setTextColor(ContextCompat.getColor(this, R.color.cod_gray))
         );
         dialog.show();
     }
 
+    private SignEntity getSignImage(Classifier.Recognition result) {
+        SignEntity sign = null;
+        if ("crosswalk".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.crosswalk);
+        } else if ("stop".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.stop);
+        } else if ("main road".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.main_road);
+        } else if ("give road".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.give_road);
+        } else if ("children".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.children);
+        } else if ("dont stop".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.dont_stop);
+        } else if ("no parking".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.no_parking);
+        } else if ("dont move".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.dont_move);
+        } else if ("dont enter".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.dont_enter);
+        } else if ("no overtake".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.no_overtake);
+        } else if ("speed limit 5".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_5);
+        } else if ("speed limit 10".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_10);
+        } else if ("speed limit 20".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_20);
+        } else if ("speed limit 30".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_30);
+        } else if ("speed limit 40".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_40);
+        } else if ("speed limit 50".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_50);
+        } else if ("speed limit 60".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_60);
+        } else if ("speed limit 70".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_70);
+        } else if ("speed limit 80".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_80);
+        } else if ("speed limit 90".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_90);
+        } else if ("speed limit 100".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_100);
+        }
+
+        return sign;
+    }
 }
