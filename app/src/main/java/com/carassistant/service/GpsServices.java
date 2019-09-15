@@ -55,6 +55,8 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
     public void onLocationChanged(Location location) {
         data = DetectorActivity.getData();
         if (data.isRunning()){
+
+            data.setLocation(location);
             currentLat = location.getLatitude();
             currentLon = location.getLongitude();
 

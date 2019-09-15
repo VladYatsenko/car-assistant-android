@@ -1,6 +1,8 @@
 package com.carassistant.model.entity;
 
 
+import android.location.Location;
+
 public class Data {
     private boolean isRunning;
     private long time;
@@ -10,6 +12,8 @@ public class Data {
     private double distanceM;
     private double curSpeed;
     private double maxSpeed;
+
+    private Location location;
 
     private OnGpsServiceUpdate onGpsServiceUpdate;
 
@@ -110,6 +114,14 @@ public class Data {
 
     public void setTime(long time) {
         this.time = time;
+    }
+
+    public void setLocation(Location location){
+        this.location = location;
+    }
+
+    public Location getLocation() {
+        return location;
     }
 }
 

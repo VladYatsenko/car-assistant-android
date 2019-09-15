@@ -1,7 +1,9 @@
 package com.carassistant.model.entity;
 
+import android.graphics.RectF;
+import android.location.Location;
+
 import androidx.annotation.IdRes;
-import androidx.annotation.Nullable;
 
 import java.util.Date;
 import java.util.UUID;
@@ -13,12 +15,17 @@ public class SignEntity {
     @IdRes
     private int image;
     private Date date;
+    private RectF screenLocation;
+    private Location location;
+//    private Location
 
     public SignEntity(String name, int image){
         this.uuid = UUID.randomUUID();
         this.name = name;
         this.image = image;
         this.date = new Date();
+//        this.screenLocation = screenLocation;
+//        this.location = location;
     }
 
     public UUID getUuid() {
@@ -37,4 +44,19 @@ public class SignEntity {
         return date;
     }
 
+    public void setScreenLocation(RectF screenLocation) {
+        this.screenLocation = screenLocation;
+    }
+
+    public RectF getScreenLocation() {
+        return screenLocation;
+    }
+
+    public void setLocation(Location location) {
+        this.location = location;
+    }
+
+    public Location getLocation() {
+        return location;
+    }
 }

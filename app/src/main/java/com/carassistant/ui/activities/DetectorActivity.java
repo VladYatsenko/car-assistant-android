@@ -30,10 +30,12 @@ import android.text.style.RelativeSizeSpan;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -42,21 +44,20 @@ import com.carassistant.R;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.SignEntity;
 import com.carassistant.service.GpsServices;
-import com.carassistant.ui.adapter.SignAdapter;
-import com.carassistant.utils.customview.OverlayView;
-import com.carassistant.utils.customview.OverlayView.DrawCallback;
-import com.carassistant.utils.env.BorderedText;
-import com.carassistant.utils.env.ImageUtils;
-import com.carassistant.utils.env.Logger;
 import com.carassistant.tflite.Classifier;
 import com.carassistant.tflite.TFLiteObjectDetectionAPIModel;
 import com.carassistant.tflite.tracking.MultiBoxTracker;
+import com.carassistant.ui.adapter.SignAdapter;
+import com.carassistant.utils.customview.OverlayView;
+import com.carassistant.utils.env.BorderedText;
+import com.carassistant.utils.env.ImageUtils;
+import com.carassistant.utils.env.Logger;
+import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Locale;
 
 import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
 
@@ -65,6 +66,8 @@ public class DetectorActivity extends CameraActivity
         implements OnImageAvailableListener, GpsStatus.Listener, LocationListener {
     private static final Logger LOGGER = new Logger();
 
+    private final String TAG = DetectorActivity.class.getSimpleName();
+
     // Configuration values for the prepackaged SSD model.
     private static final int TF_OD_API_INPUT_SIZE = 300;
     private static final boolean TF_OD_API_IS_QUANTIZED = true;
@@ -72,7 +75,7 @@ public class DetectorActivity extends CameraActivity
     private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap.txt";
     //  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
     // Minimum detection confidence to track a detection.
-    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.7f;
+    private static float MINIMUM_CONFIDENCE_TF_OD_API = 0.7f;
     private static final boolean MAINTAIN_ASPECT = false;
     private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
     private static final boolean SAVE_PREVIEW_BITMAP = false;
@@ -110,6 +113,7 @@ public class DetectorActivity extends CameraActivity
     private ArrayList<SignEntity> signs;
 
     private Ringtone ringtone = null;
+    SwitchCompat notification;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -117,6 +121,42 @@ public class DetectorActivity extends CameraActivity
         setupLocation();
 
         setupRecycler();
+
+        setupViews();
+    }
+
+    private void setupViews() {
+        TextView confidence = findViewById(R.id.confidence_value);
+        confidence.setText(String.format("%.2f", MINIMUM_CONFIDENCE_TF_OD_API));
+
+        SwitchCompat camera = findViewById(R.id.camera_switch);
+        camera.setOnCheckedChangeListener((buttonView, isChecked) ->
+                findViewById(R.id.container).setAlpha(isChecked ? 1f : 0f)
+        );
+
+        notification = findViewById(R.id.notification_switch);
+
+        SeekBar confidenceSeekBar = findViewById(R.id.confidence_seek);
+        confidenceSeekBar.setMax(100);
+        confidenceSeekBar.setProgress((int) (MINIMUM_CONFIDENCE_TF_OD_API * 100));
+
+        confidenceSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                MINIMUM_CONFIDENCE_TF_OD_API = progress / 100.0F;
+                confidence.setText(String.format("%.2f", MINIMUM_CONFIDENCE_TF_OD_API));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
     }
 
     @Override
@@ -203,17 +243,13 @@ public class DetectorActivity extends CameraActivity
         cropToFrameTransform = new Matrix();
         frameToCropTransform.invert(cropToFrameTransform);
 
-        trackingOverlay = (OverlayView) findViewById(R.id.tracking_overlay);
-        trackingOverlay.addCallback(
-                new DrawCallback() {
-                    @Override
-                    public void drawCallback(final Canvas canvas) {
-                        tracker.draw(canvas);
-                        if (isDebug()) {
-                            tracker.drawDebug(canvas);
-                        }
-                    }
-                });
+        trackingOverlay = findViewById(R.id.tracking_overlay);
+        trackingOverlay.addCallback(canvas -> {
+            tracker.draw(canvas);
+            if (isDebug()) {
+                tracker.drawDebug(canvas);
+            }
+        });
 
         tracker.setFrameConfiguration(previewWidth, previewHeight, sensorOrientation);
     }
@@ -296,9 +332,9 @@ public class DetectorActivity extends CameraActivity
         playNotification();
     }
 
-    private void playNotification(){
+    private void playNotification() {
         try {
-            if (!ringtone.isPlaying()) {
+            if (!ringtone.isPlaying() && notification.isChecked()) {
                 ringtone.play();
             }
         } catch (Exception e) {
@@ -520,6 +556,13 @@ public class DetectorActivity extends CameraActivity
             sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_90);
         } else if ("speed limit 100".equals(result.getTitle())) {
             sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_100);
+        }
+
+        if (sign != null) {
+            sign.setScreenLocation(result.getLocation());
+            sign.setLocation(data.getLocation());
+
+            Log.i(TAG, new Gson().toJson(sign));
         }
 
         return sign;
