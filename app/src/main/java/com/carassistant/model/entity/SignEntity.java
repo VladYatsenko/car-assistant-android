@@ -1,5 +1,6 @@
 package com.carassistant.model.entity;
 
+import android.graphics.Bitmap;
 import android.graphics.RectF;
 import android.location.Location;
 
@@ -19,7 +20,7 @@ public class SignEntity {
     private Location location;
 //    private Location
 
-    public SignEntity(String name, int image){
+    public SignEntity(String name, int image) {
         this.uuid = UUID.randomUUID();
         this.name = name;
         this.image = image;
@@ -58,5 +59,14 @@ public class SignEntity {
 
     public Location getLocation() {
         return location;
+    }
+
+    public boolean isValidSize(Bitmap rgbFrameBitmap) {
+        return screenLocation.height() > 0 &&
+                screenLocation.width() > 0 &&
+                screenLocation.left > 0 &&
+                screenLocation.top > 0 &&
+                screenLocation.bottom > 0 &&
+                screenLocation.right > 0 ;
     }
 }

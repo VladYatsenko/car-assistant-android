@@ -44,8 +44,8 @@ import com.carassistant.R;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.SignEntity;
 import com.carassistant.service.GpsServices;
-import com.carassistant.tflite.Classifier;
-import com.carassistant.tflite.TFLiteObjectDetectionAPIModel;
+import com.carassistant.tflite.detection.Classifier;
+import com.carassistant.tflite.detection.TFLiteObjectDetectionAPIModel;
 import com.carassistant.tflite.tracking.MultiBoxTracker;
 import com.carassistant.ui.adapter.SignAdapter;
 import com.carassistant.utils.customview.OverlayView;
@@ -309,7 +309,7 @@ public class DetectorActivity extends CameraActivity
                                 result.setLocation(location);
                                 mappedRecognitions.add(result);
 
-                                runOnUiThread(() -> updateSignList(result));
+                                runOnUiThread(() -> updateSignList(result, croppedBitmap));
                             }
                         }
 
@@ -327,8 +327,8 @@ public class DetectorActivity extends CameraActivity
                 });
     }
 
-    private void updateSignList(Classifier.Recognition result) {
-        adapter.setSign(getSignImage(result));
+    private void updateSignList(Classifier.Recognition result, Bitmap bitmap) {
+        adapter.setSign(getSignImage(result, bitmap));
         playNotification();
     }
 
@@ -352,8 +352,8 @@ public class DetectorActivity extends CameraActivity
 //        accuracy = (TextView) findViewById(R.id.accuracy);
 //        maxSpeed = (TextView) findViewById(R.id.maxSpeed);
 //        averageSpeed = (TextView) findViewById(R.id.averageSpeed);
-        distance = (TextView) findViewById(R.id.distanceValueTxt);
-        currentSpeed = (TextView) findViewById(R.id.currentSpeedTxt);
+        distance = findViewById(R.id.distanceValueTxt);
+        currentSpeed = findViewById(R.id.currentSpeedTxt);
 //
         onGpsServiceUpdate = () -> {
             double maxSpeedTemp = data.getMaxSpeed();
@@ -378,7 +378,7 @@ public class DetectorActivity extends CameraActivity
 //            averageSpeed.setText(s);
 
             s = new SpannableString(String.format("%.3f %s", distanceTemp, distanceUnits));
-            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
+//            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
             distance.setText(s);
         };
 
@@ -456,6 +456,7 @@ public class DetectorActivity extends CameraActivity
         }
     }
 
+    @SuppressLint("DefaultLocale")
     @Override
     public void onLocationChanged(Location location) {
         if (location.hasAccuracy()) {
@@ -476,11 +477,11 @@ public class DetectorActivity extends CameraActivity
 
         if (location.hasSpeed()) {
             double speed = location.getSpeed() * 3.6;
-            String units = "km/h";
+//            String units = "km/h";
 
 //            SpannableString s = new SpannableString(String.format(Locale.ENGLISH, "%.0f %s", speed, units));
 //            s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
-            currentSpeed.setText(String.valueOf(speed));
+            currentSpeed.setText(String.format("%.2f", speed));
         }
     }
 
@@ -512,7 +513,7 @@ public class DetectorActivity extends CameraActivity
         dialog.show();
     }
 
-    private SignEntity getSignImage(Classifier.Recognition result) {
+    private SignEntity getSignImage(Classifier.Recognition result, Bitmap bitmap) {
         SignEntity sign = null;
         if ("crosswalk".equals(result.getTitle())) {
             sign = new SignEntity(result.getTitle(), R.drawable.crosswalk);
@@ -562,7 +563,23 @@ public class DetectorActivity extends CameraActivity
             sign.setScreenLocation(result.getLocation());
             sign.setLocation(data.getLocation());
 
-            Log.i(TAG, new Gson().toJson(sign));
+            if (sign.getName().contains("speed") && sign.isValidSize(rgbFrameBitmap)) {
+                try {
+                    Matrix matrix = new Matrix();
+                    matrix.postRotate(90);
+                    Bitmap crop = Bitmap.createBitmap(rgbFrameBitmap,
+                            (int) sign.getScreenLocation().left,
+                            (int) sign.getScreenLocation().top,
+                            (int) sign.getScreenLocation().width(),
+                            (int) sign.getScreenLocation().height(),
+                            matrix,
+                            true);
+                    Log.i(TAG, new Gson().toJson(sign));
+//                ImageUtils.saveBitmap(crop, sign.getName());
+                } catch (Exception e){}
+            }
+
+//            Log.i(TAG, new Gson().toJson(sign));
         }
 
         return sign;
