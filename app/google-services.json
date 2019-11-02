@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "839286300459",
+    "firebase_url": "https://car-assiastant.firebaseio.com",
+    "project_id": "car-assiastant",
+    "storage_bucket": "car-assiastant.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:839286300459:android:682187a56fe4be09b12f6e",
+        "android_client_info": {
+          "package_name": "com.carassistant"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "839286300459-aoldl8c8fovt5t0fp0macdfhl29dg68u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDV8NxjJNr_Zf3eZf5VjhbPjPNTKrCHSc0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "839286300459-aoldl8c8fovt5t0fp0macdfhl29dg68u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
