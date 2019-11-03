@@ -19,6 +19,7 @@ package com.carassistant.ui.activities;
 import android.Manifest;
 import android.app.Fragment;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -39,6 +40,7 @@ import androidx.annotation.NonNull;
 
 import com.carassistant.application.CarAssistantApplication;
 import com.carassistant.di.components.ApplicationComponent;
+import com.carassistant.service.GpsServices;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -359,6 +361,7 @@ public abstract class CameraActivity extends AppCompatActivity
                     && grantResults[1] == PackageManager.PERMISSION_GRANTED
                     && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
                 setFragment();
+                startService(new Intent(getBaseContext(), GpsServices.class));
             } else {
 //                requestPermission();
             }

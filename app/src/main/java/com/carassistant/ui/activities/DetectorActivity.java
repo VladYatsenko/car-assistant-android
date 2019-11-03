@@ -139,7 +139,7 @@ public class DetectorActivity extends CameraActivity
         setupRecycler();
         setupViews();
 
-        startService(new Intent(getBaseContext(), GpsServices.class));
+
     }
 
     private void inject() {
@@ -369,7 +369,7 @@ public class DetectorActivity extends CameraActivity
                                 runOnUiThread(() -> updateSignList(result, croppedBitmap));
                             }
                         }
-                        
+
                         tracker.trackResults(mappedRecognitions, currTimestamp);
                         trackingOverlay.postInvalidate();
 
