@@ -18,7 +18,7 @@ public class Data {
     private OnGpsServiceUpdate onGpsServiceUpdate;
 
     public interface OnGpsServiceUpdate{
-        public void update();
+        void update();
     }
 
     public void setOnGpsServiceUpdate(OnGpsServiceUpdate onGpsServiceUpdate){
@@ -26,7 +26,8 @@ public class Data {
     }
 
     public void update(){
-        onGpsServiceUpdate.update();
+        if (onGpsServiceUpdate != null)
+            onGpsServiceUpdate.update();
     }
 
     public Data() {

@@ -120,6 +120,7 @@ public class DetectorActivity extends CameraActivity
 
     private Ringtone ringtone = null;
     SwitchCompat notification;
+    private static double distanceValue = 0;
 
     @Inject
     SharedPreferencesManager sharedPreferencesManager;
@@ -135,6 +136,8 @@ public class DetectorActivity extends CameraActivity
         setupLocation();
         setupRecycler();
         setupViews();
+
+        startService(new Intent(getBaseContext(), GpsServices.class));
     }
 
     private void inject() {
@@ -147,7 +150,9 @@ public class DetectorActivity extends CameraActivity
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString(SIGN_LIST, new Gson().toJson(adapter.getSigns()));
-        outState.getString(DISTANCE, distance.getText().toString());
+        outState.putString(DISTANCE, distance.getText().toString());
+        Log.i("distance", "save Distance = " + distance.getText().toString());
+
     }
 
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
@@ -162,7 +167,9 @@ public class DetectorActivity extends CameraActivity
         }
         adapter.setSigns(items);
 
-        distance.setText(savedInstanceState.getString(DISTANCE, "0 km"));
+        String savedDistance = savedInstanceState.getString(DISTANCE, "0 km");
+        Log.i("distance", "savedDistance = " + savedDistance);
+        distance.setText(savedDistance);
     }
 
     @SuppressLint("DefaultLocale")
@@ -417,27 +424,30 @@ public class DetectorActivity extends CameraActivity
                 distanceUnits = "km";
             }
 
-            SpannableString s = new SpannableString(String.format("%.0f %s", maxSpeedTemp, speedUnits));
-            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
-//            maxSpeed.setText(s);
-
-            s = new SpannableString(String.format("%.0f %s", averageTemp, speedUnits));
-            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
-//            averageSpeed.setText(s);
-
-//            s = new SpannableString(String.format("%.1f %s", distanceTemp, distanceUnits));
-//            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
             distance.setText(String.format("%.1f %s", distanceTemp, distanceUnits).replace(',', '.'));
+            Log.i("distance", "onGpsServiceUpdate Distance = " + distance.getText().toString());
 
-            double distance = sharedPreferencesManager.getDistance();
-            if (distanceUnits.equals("m"))
-                distance += distanceTemp / 1000.0;
-            else distance += distanceTemp;
-            sharedPreferencesManager.setDistance((float) distance);
+            Log.i("distance", "distanceValue Distance = " + distanceValue);
 
-            totalDistance.setText(String.format("%.1f %s", distance, "km").replace(',', '.').replace(".0", ""));
+            if (distanceValue != distanceTemp) {
+                double distance = sharedPreferencesManager.getDistance();
+                Log.i("distance", "sharedPreferencesManager Distance = " + distance);
+
+                if (distanceUnits.equals("m"))
+                    distance += (distanceTemp - distanceValue) / 1000.0;
+                else distance += (distanceTemp- distanceValue);
+
+                Log.i("distance", "setDistance Distance = " + distance);
+
+                sharedPreferencesManager.setDistance((float) distance);
+
+                distanceValue = distanceTemp;
+                totalDistance.setText(String.format("%.1f %s", distance, "km").replace(',', '.').replace(".0", ""));
+            }
+
         };
 
+        data.setOnGpsServiceUpdate(onGpsServiceUpdate);
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         data.setRunning(true);
         data.setFirstTime(true);
@@ -639,5 +649,11 @@ public class DetectorActivity extends CameraActivity
         }
 
         return sign;
+    }
+
+    @Override
+    public synchronized void onDestroy() {
+        super.onDestroy();
+        stopService(new Intent(getBaseContext(), GpsServices.class));
     }
 }

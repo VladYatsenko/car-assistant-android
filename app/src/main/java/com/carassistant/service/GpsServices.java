@@ -2,6 +2,8 @@ package com.carassistant.service;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
@@ -10,15 +12,21 @@ import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.media.RingtoneManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 import com.carassistant.R;
 import com.carassistant.model.entity.Data;
 import com.carassistant.ui.activities.DetectorActivity;
+
+import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
 
 public class GpsServices extends Service implements LocationListener, GpsStatus.Listener {
 
@@ -33,7 +41,6 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
     double lastLat = 0;
 
     PendingIntent contentIntent;
-
 
     @SuppressLint("MissingPermission")
     @Override
@@ -100,15 +107,38 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
 
 
     public void updateNotification(boolean asData){
-        Notification.Builder builder = new Notification.Builder(getBaseContext())
+
+        String channelId = "Car assistant";
+        String channelName = "Location";
+
+        NotificationManager notificationManager = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            notificationManager.createNotificationChannel(
+                    new NotificationChannel(
+                            channelId,
+                            channelName,
+                            NotificationManager.IMPORTANCE_LOW
+                    )
+            );
+            notificationManager.getNotificationChannel(channelId).setSound(null, null);
+        }
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(getBaseContext(), channelId)
                 .setContentTitle(getString(R.string.app_name))
-                .setSmallIcon(R.drawable.ic_launcher)
+                .setSmallIcon(R.drawable.ic_directions_car)
+                .setColor(ContextCompat.getColor(this, R.color.orange))
+                .setPriority(Notification.PRIORITY_LOW)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(false)
+                .setAutoCancel(false)
+                .setSound(null)
+                .setVibrate(new long[]{0})
                 .setContentIntent(contentIntent);
 
         if(asData){
-            builder.setContentText(String.format("notification", data.getMaxSpeed(), data.getDistance()));
+            builder.setContentText(String.format("Location", data.getMaxSpeed(), data.getDistance()));
         }else{
-            builder.setContentText(String.format("notification", '-', '-'));
+            builder.setContentText(String.format("Location", '-', '-'));
         }
         Notification notification = builder.build();
         startForeground(1, notification);
