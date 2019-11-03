@@ -32,6 +32,12 @@ public class SignAdapter extends RecyclerView.Adapter<SignAdapter.SignViewHolder
         this.signs = new ArrayList<>();
     }
 
+    public ArrayList<SignEntity> getSigns(){
+        if (signs != null)
+            return signs;
+        else return new ArrayList<>();
+    }
+
     public void setSigns(ArrayList<SignEntity> signs) {
         if (signs != null)
             this.signs.addAll(signs);

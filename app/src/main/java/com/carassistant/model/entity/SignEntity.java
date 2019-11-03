@@ -6,10 +6,11 @@ import android.location.Location;
 
 import androidx.annotation.IdRes;
 
+import java.io.Serializable;
 import java.util.Date;
 import java.util.UUID;
 
-public class SignEntity {
+public class SignEntity implements Serializable {
 
     private UUID uuid;
     private String name;

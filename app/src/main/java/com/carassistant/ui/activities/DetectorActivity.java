@@ -34,6 +34,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
@@ -41,6 +42,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.carassistant.R;
+import com.carassistant.di.components.DaggerScreenComponent;
+import com.carassistant.managers.SharedPreferencesManager;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.SignEntity;
 import com.carassistant.service.GpsServices;
@@ -53,11 +56,14 @@ import com.carassistant.utils.env.BorderedText;
 import com.carassistant.utils.env.ImageUtils;
 import com.carassistant.utils.env.Logger;
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+
+import javax.inject.Inject;
 
 import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
 
@@ -107,7 +113,7 @@ public class DetectorActivity extends CameraActivity
     private LocationManager mLocationManager;
     private boolean firstfix;
 
-    private TextView currentSpeed, distance;
+    private TextView currentSpeed, distance, satellite, status, accuracy, totalDistance;
     private RecyclerView signRecycler;
     private SignAdapter adapter;
     private ArrayList<SignEntity> signs;
@@ -115,16 +121,51 @@ public class DetectorActivity extends CameraActivity
     private Ringtone ringtone = null;
     SwitchCompat notification;
 
+    @Inject
+    SharedPreferencesManager sharedPreferencesManager;
+
+    private final String SIGN_LIST = "sign_list";
+    private final String DISTANCE = "distance";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        inject();
         setupLocation();
-
         setupRecycler();
-
         setupViews();
     }
 
+    private void inject() {
+        DaggerScreenComponent.builder()
+                .applicationComponent(getApplicationComponent())
+                .build()
+                .inject(this);
+    }
+
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString(SIGN_LIST, new Gson().toJson(adapter.getSigns()));
+        outState.getString(DISTANCE, distance.getText().toString());
+    }
+
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        String json = savedInstanceState.getString(SIGN_LIST);
+        ArrayList<SignEntity> items = null;
+        try {
+            items = (new Gson()).fromJson(json, new TypeToken<ArrayList<SignEntity>>() {
+            }.getType());
+        } catch (Exception ignored) {
+            items = new ArrayList<>();
+        }
+        adapter.setSigns(items);
+
+        distance.setText(savedInstanceState.getString(DISTANCE, "0 km"));
+    }
+
+    @SuppressLint("DefaultLocale")
     private void setupViews() {
         TextView confidence = findViewById(R.id.confidence_value);
         confidence.setText(String.format("%.2f", MINIMUM_CONFIDENCE_TF_OD_API));
@@ -157,6 +198,11 @@ public class DetectorActivity extends CameraActivity
 
             }
         });
+
+        totalDistance.setText(
+                String.format("%.1f %s", sharedPreferencesManager.getDistance(), "km")
+                        .replace(',', '.')
+                        .replace(".0", ""));
     }
 
     @Override
@@ -343,16 +389,18 @@ public class DetectorActivity extends CameraActivity
     }
 
 
+    @SuppressLint("DefaultLocale")
     private void setupLocation() {
 
         data = new Data(onGpsServiceUpdate);
 
-//        satellite = (TextView) findViewById(R.id.satellite);
-//        status = (TextView) findViewById(R.id.status);
-//        accuracy = (TextView) findViewById(R.id.accuracy);
+        satellite = findViewById(R.id.satellite_info);
+        status = findViewById(R.id.gps_status_info);
+        accuracy = findViewById(R.id.accuracy_info);
 //        maxSpeed = (TextView) findViewById(R.id.maxSpeed);
 //        averageSpeed = (TextView) findViewById(R.id.averageSpeed);
         distance = findViewById(R.id.distanceValueTxt);
+        totalDistance = findViewById(R.id.totalDistanceValueTxt);
         currentSpeed = findViewById(R.id.currentSpeedTxt);
 //
         onGpsServiceUpdate = () -> {
@@ -377,9 +425,17 @@ public class DetectorActivity extends CameraActivity
             s.setSpan(new RelativeSizeSpan(0.5f), s.length() - speedUnits.length() - 1, s.length(), 0);
 //            averageSpeed.setText(s);
 
-            s = new SpannableString(String.format("%.3f %s", distanceTemp, distanceUnits));
+//            s = new SpannableString(String.format("%.1f %s", distanceTemp, distanceUnits));
 //            s.setSpan(new RelativeSizeSpan(0.5f), s.length() - distanceUnits.length() - 1, s.length(), 0);
-            distance.setText(s);
+            distance.setText(String.format("%.1f %s", distanceTemp, distanceUnits).replace(',', '.'));
+
+            double distance = sharedPreferencesManager.getDistance();
+            if (distanceUnits.equals("m"))
+                distance += distanceTemp / 1000.0;
+            else distance += distanceTemp;
+            sharedPreferencesManager.setDistance((float) distance);
+
+            totalDistance.setText(String.format("%.1f %s", distance, "km").replace(',', '.').replace(".0", ""));
         };
 
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
@@ -399,7 +455,6 @@ public class DetectorActivity extends CameraActivity
     public static Data getData() {
         return data;
     }
-
 
     @Override
     protected int getLayoutId() {
@@ -435,14 +490,14 @@ public class DetectorActivity extends CameraActivity
                         satsUsed++;
                     }
                 }
-//                satellite.setText(satsUsed + "/" + satsInView);
+                satellite.setText(satsUsed + "/" + satsInView);
                 if (satsUsed == 0) {
                     data.setRunning(false);
-//                    status.setText("");
+                    status.setText("");
                     stopService(new Intent(getBaseContext(), GpsServices.class));
-//                    accuracy.setText("");
-//                        status.setText(getResources().getString(R.string.waiting_for_fix));
-//                    firstfix = true;
+                    accuracy.setText("");
+                    status.setText(getResources().getString(R.string.waiting_for_fix));
+                    firstfix = true;
                 }
                 break;
 
@@ -465,10 +520,10 @@ public class DetectorActivity extends CameraActivity
 
             SpannableString s = new SpannableString(String.format("%.0f %s", acc, units));
             s.setSpan(new RelativeSizeSpan(0.75f), s.length() - units.length() - 1, s.length(), 0);
-//            accuracy.setText(s);
+            accuracy.setText(s);
 
             if (firstfix) {
-//                status.setText("");
+                status.setText("");
                 firstfix = false;
             }
         } else {
@@ -481,7 +536,7 @@ public class DetectorActivity extends CameraActivity
 
 //            SpannableString s = new SpannableString(String.format(Locale.ENGLISH, "%.0f %s", speed, units));
 //            s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
-            currentSpeed.setText(String.format("%.2f", speed));
+            currentSpeed.setText(String.format("%.0f", speed));
         }
     }
 
@@ -576,7 +631,8 @@ public class DetectorActivity extends CameraActivity
                             true);
                     Log.i(TAG, new Gson().toJson(sign));
 //                ImageUtils.saveBitmap(crop, sign.getName());
-                } catch (Exception e){}
+                } catch (Exception e) {
+                }
             }
 
 //            Log.i(TAG, new Gson().toJson(sign));

@@ -23,4 +23,8 @@ public class CarAssistantApplication extends Application {
                 .applicationModule(new ApplicationModule(this))
                 .build();
     }
+
+    public ApplicationComponent getApplicationComponent() {
+        return applicationComponent;
+    }
 }
