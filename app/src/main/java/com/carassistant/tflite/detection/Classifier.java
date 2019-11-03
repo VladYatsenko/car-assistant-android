@@ -18,6 +18,7 @@ package com.carassistant.tflite.detection;
 import android.graphics.Bitmap;
 import android.graphics.RectF;
 import java.util.List;
+import java.util.Objects;
 
 /** Generic interface for interacting with different recognition engines. */
 public interface Classifier {
@@ -100,6 +101,19 @@ public interface Classifier {
       }
 
       return resultString.trim();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      Recognition that = (Recognition) o;
+      return title.equals(that.title);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(title);
     }
   }
 }

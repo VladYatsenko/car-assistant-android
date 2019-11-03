@@ -60,6 +60,7 @@ import com.google.gson.reflect.TypeToken;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -127,6 +128,7 @@ public class DetectorActivity extends CameraActivity
 
     private final String SIGN_LIST = "sign_list";
     private final String DISTANCE = "distance";
+    private final String DISTANCE_VAL = "distance_val";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,6 +153,7 @@ public class DetectorActivity extends CameraActivity
         super.onSaveInstanceState(outState);
         outState.putString(SIGN_LIST, new Gson().toJson(adapter.getSigns()));
         outState.putString(DISTANCE, distance.getText().toString());
+        outState.putDouble(DISTANCE_VAL, data.getDistance());
         Log.i("distance", "save Distance = " + distance.getText().toString());
 
     }
@@ -170,6 +173,7 @@ public class DetectorActivity extends CameraActivity
         String savedDistance = savedInstanceState.getString(DISTANCE, "0 km");
         Log.i("distance", "savedDistance = " + savedDistance);
         distance.setText(savedDistance);
+        data.addDistance(savedInstanceState.getDouble(DISTANCE_VAL, 0));
     }
 
     @SuppressLint("DefaultLocale")
@@ -365,7 +369,7 @@ public class DetectorActivity extends CameraActivity
                                 runOnUiThread(() -> updateSignList(result, croppedBitmap));
                             }
                         }
-
+                        
                         tracker.trackResults(mappedRecognitions, currTimestamp);
                         trackingOverlay.postInvalidate();
 
@@ -381,8 +385,46 @@ public class DetectorActivity extends CameraActivity
     }
 
     private void updateSignList(Classifier.Recognition result, Bitmap bitmap) {
-        adapter.setSign(getSignImage(result, bitmap));
+
+        SignEntity sign = getSignImage(result, bitmap);
+
+        ArrayList<SignEntity> list = new ArrayList<>(adapter.getSigns());
+
+        if (list.isEmpty()){
+            addSignToAdapter(sign);
+            return;
+        }
+        if (list.contains(sign)) {
+            if (isRemoveValid(sign, list.get(list.indexOf(sign)))) {
+                adapter.getSigns().remove(sign);
+                addSignToAdapter(sign);
+            }
+        } else {
+            addSignToAdapter(sign);
+        }
+
+    }
+
+    private void addSignToAdapter(SignEntity sign){
+        adapter.setSign(sign);
         playNotification();
+    }
+
+    private boolean isRemoveValid(SignEntity sign1, SignEntity sign2) {
+        return isTimeDifferenceValid(sign1.getDate(), sign2.getDate())
+                || isLocationDifferenceValid(sign1.getLocation(), sign2.getLocation());
+    }
+
+    private boolean isTimeDifferenceValid(Date date1, Date date2) {
+        long milliseconds = date1.getTime() - date2.getTime();
+        Log.i("sign", "isTimeDifferenceValid "+ ((milliseconds / (1000)) > 30));
+        return (int) (milliseconds / (1000)) > 30;
+    }
+
+    private boolean isLocationDifferenceValid(Location location1, Location location2) {
+        if (location1 == null || location2 == null)
+            return false;
+        return location1.distanceTo(location2) > 5;
     }
 
     private void playNotification() {
@@ -395,7 +437,6 @@ public class DetectorActivity extends CameraActivity
         }
     }
 
-
     @SuppressLint("DefaultLocale")
     private void setupLocation() {
 
@@ -404,8 +445,6 @@ public class DetectorActivity extends CameraActivity
         satellite = findViewById(R.id.satellite_info);
         status = findViewById(R.id.gps_status_info);
         accuracy = findViewById(R.id.accuracy_info);
-//        maxSpeed = (TextView) findViewById(R.id.maxSpeed);
-//        averageSpeed = (TextView) findViewById(R.id.averageSpeed);
         distance = findViewById(R.id.distanceValueTxt);
         totalDistance = findViewById(R.id.totalDistanceValueTxt);
         currentSpeed = findViewById(R.id.currentSpeedTxt);
@@ -435,7 +474,7 @@ public class DetectorActivity extends CameraActivity
 
                 if (distanceUnits.equals("m"))
                     distance += (distanceTemp - distanceValue) / 1000.0;
-                else distance += (distanceTemp- distanceValue);
+                else distance += (distanceTemp - distanceValue);
 
                 Log.i("distance", "setDistance Distance = " + distance);
 

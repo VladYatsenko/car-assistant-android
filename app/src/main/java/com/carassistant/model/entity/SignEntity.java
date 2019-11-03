@@ -8,6 +8,7 @@ import androidx.annotation.IdRes;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.Objects;
 import java.util.UUID;
 
 public class SignEntity implements Serializable {
@@ -69,5 +70,18 @@ public class SignEntity implements Serializable {
                 screenLocation.top > 0 &&
                 screenLocation.bottom > 0 &&
                 screenLocation.right > 0 ;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        SignEntity that = (SignEntity) o;
+        return Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
     }
 }
