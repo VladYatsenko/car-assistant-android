@@ -18,8 +18,10 @@ package com.carassistant.ui.activities;
 
 import android.Manifest;
 import android.app.Fragment;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
@@ -34,13 +36,14 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.IBinder;
 import android.os.Trace;
 
 import androidx.annotation.NonNull;
 
 import com.carassistant.application.CarAssistantApplication;
 import com.carassistant.di.components.ApplicationComponent;
-import com.carassistant.service.GpsServices;
+import com.carassistant.service.GpsService;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -56,7 +59,6 @@ import android.widget.CompoundButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.carassistant.R;
 import com.carassistant.ui.fragments.CameraConnectionFragment;
@@ -331,6 +333,11 @@ public abstract class CameraActivity extends AppCompatActivity
             LOGGER.e(e, "Exception!");
         }
 
+        if (mBound) {
+            unbindService(mConnection);
+            mBound = false;
+        }
+
         super.onPause();
     }
 
@@ -361,14 +368,34 @@ public abstract class CameraActivity extends AppCompatActivity
                     && grantResults[1] == PackageManager.PERMISSION_GRANTED
                     && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
                 setFragment();
-                startService(new Intent(getBaseContext(), GpsServices.class));
+                Intent intent = new Intent(this, GpsService.class);
+                bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
             } else {
 //                requestPermission();
             }
         }
     }
 
-    private boolean hasPermission() {
+    protected GpsService mService;
+    protected boolean mBound = false;
+    protected ServiceConnection mConnection = new ServiceConnection() {
+
+        @Override
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // We've bound to LocalService, cast the IBinder and get LocalService instance
+            GpsService.GpsServiceBinder binder = (GpsService.GpsServiceBinder) service;
+            mService = binder.getService();
+            mBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {
+            mBound = false;
+        }
+    };
+
+    protected boolean hasPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             return checkSelfPermission(PERMISSION_CAMERA) == PackageManager.PERMISSION_GRANTED;
         } else {

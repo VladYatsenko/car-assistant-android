@@ -2,8 +2,10 @@ package com.carassistant.ui.activities;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -24,6 +26,7 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.os.SystemClock;
 import android.text.SpannableString;
 import android.text.style.RelativeSizeSpan;
@@ -46,7 +49,7 @@ import com.carassistant.di.components.DaggerScreenComponent;
 import com.carassistant.managers.SharedPreferencesManager;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.SignEntity;
-import com.carassistant.service.GpsServices;
+import com.carassistant.service.GpsService;
 import com.carassistant.tflite.detection.Classifier;
 import com.carassistant.tflite.detection.TFLiteObjectDetectionAPIModel;
 import com.carassistant.tflite.tracking.MultiBoxTracker;
@@ -219,6 +222,12 @@ public class DetectorActivity extends CameraActivity
     @Override
     public synchronized void onResume() {
         super.onResume();
+
+        if(hasPermission()) {
+            Intent intent = new Intent(this, GpsService.class);
+            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        }
+
         if (mLocationManager.getAllProviders().indexOf(LocationManager.GPS_PROVIDER) >= 0) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -543,7 +552,7 @@ public class DetectorActivity extends CameraActivity
                 if (satsUsed == 0) {
                     data.setRunning(false);
                     status.setText("");
-                    stopService(new Intent(getBaseContext(), GpsServices.class));
+                    stopService(new Intent(getBaseContext(), GpsService.class));
                     accuracy.setText("");
                     status.setText(getResources().getString(R.string.waiting_for_fix));
                     firstfix = true;
@@ -581,10 +590,6 @@ public class DetectorActivity extends CameraActivity
 
         if (location.hasSpeed()) {
             double speed = location.getSpeed() * 3.6;
-//            String units = "km/h";
-
-//            SpannableString s = new SpannableString(String.format(Locale.ENGLISH, "%.0f %s", speed, units));
-//            s.setSpan(new RelativeSizeSpan(0.25f), s.length() - units.length() - 1, s.length(), 0);
             currentSpeed.setText(String.format("%.0f", speed));
         }
     }
@@ -693,6 +698,6 @@ public class DetectorActivity extends CameraActivity
     @Override
     public synchronized void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(getBaseContext(), GpsServices.class));
+        stopService(new Intent(getBaseContext(), GpsService.class));
     }
 }

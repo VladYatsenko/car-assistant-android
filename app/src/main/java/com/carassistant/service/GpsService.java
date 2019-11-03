@@ -12,8 +12,8 @@ import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.media.RingtoneManager;
 import android.os.AsyncTask;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -26,9 +26,7 @@ import com.carassistant.R;
 import com.carassistant.model.entity.Data;
 import com.carassistant.ui.activities.DetectorActivity;
 
-import static androidx.core.app.NotificationCompat.PRIORITY_LOW;
-
-public class GpsServices extends Service implements LocationListener, GpsStatus.Listener {
+public class GpsService extends Service implements LocationListener, GpsStatus.Listener {
 
     private LocationManager mLocationManager;
 
@@ -42,7 +40,8 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
 
     PendingIntent contentIntent;
 
-    @SuppressLint("MissingPermission")
+    private GpsServiceBinder callServiceBinder = new GpsServiceBinder();
+
     @Override
     public void onCreate() {
 
@@ -153,8 +152,16 @@ public class GpsServices extends Service implements LocationListener, GpsStatus.
     @Override
     public IBinder onBind(Intent intent) {
         // We don't provide binding, so return null
-        return null;
+        return callServiceBinder;
     }
+
+    public class GpsServiceBinder extends Binder  {
+        public GpsService getService(){
+            return GpsService.this;
+        }
+    }
+
+
    
     /* Remove the locationlistener updates when Services is stopped */
     @Override
