@@ -44,7 +44,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.carassistant.R;
 import com.carassistant.di.components.DaggerScreenComponent;
 import com.carassistant.managers.SharedPreferencesManager;
+import com.carassistant.model.bus.MessageEventBus;
+import com.carassistant.model.bus.model.EventUpdateLocation;
+import com.carassistant.model.bus.model.EventUpdateStatus;
 import com.carassistant.model.entity.Data;
+import com.carassistant.model.entity.GpsStatusEntity;
 import com.carassistant.model.entity.SignEntity;
 import com.carassistant.service.GpsService;
 import com.carassistant.tflite.detection.Classifier;
@@ -66,11 +70,13 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+
 import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
 
 
-public class DetectorActivity extends CameraActivity
-        implements OnImageAvailableListener, GpsStatus.Listener, LocationListener {
+public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
     private static final Logger LOGGER = new Logger();
 
     private final String TAG = DetectorActivity.class.getSimpleName();
@@ -88,7 +94,6 @@ public class DetectorActivity extends CameraActivity
     private static final boolean SAVE_PREVIEW_BITMAP = false;
     private static final float TEXT_SIZE_DIP = 10;
     OverlayView trackingOverlay;
-    private Integer sensorOrientation;
 
     private Classifier detector;
 
@@ -106,22 +111,17 @@ public class DetectorActivity extends CameraActivity
 
     private MultiBoxTracker tracker;
 
-    private BorderedText borderedText;
-
     //location
-    private static Data data;
-    private Data.OnGpsServiceUpdate onGpsServiceUpdate;
-    private LocationManager mLocationManager;
+    private Data data;
     private boolean firstfix;
 
     private TextView currentSpeed, distance, satellite, status, accuracy, totalDistance;
-    private RecyclerView signRecycler;
     private SignAdapter adapter;
-    private ArrayList<SignEntity> signs;
 
     private Ringtone ringtone = null;
     SwitchCompat notification;
-    private static double distanceValue = 0;
+    private double distanceValue = 0;
+    private CompositeDisposable compositeDisposable;
 
     @Inject
     SharedPreferencesManager sharedPreferencesManager;
@@ -139,23 +139,79 @@ public class DetectorActivity extends CameraActivity
         setupRecycler();
         setupViews();
 
+        setCallBack();
 
     }
 
-    private void inject() {
-        DaggerScreenComponent.builder()
-                .applicationComponent(getApplicationComponent())
-                .build()
-                .inject(this);
+    private void setCallBack() {
+        compositeDisposable = new CompositeDisposable();
+        compositeDisposable.add(MessageEventBus.INSTANCE
+                .toObservable()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(eventModel -> {
+                    if (eventModel instanceof EventUpdateLocation) {
+                        refresh(((EventUpdateLocation) eventModel).getData());
+                    }
+                    if (eventModel instanceof EventUpdateStatus) {
+                        onGpsStatusChanged(((EventUpdateStatus) eventModel).getStatus());
+                    }
+                }));
+    }
+
+    private void refresh(Data data) {
+        this.data = data;
+
+        double distanceTemp = distanceValue + data.getDistance();
+        Log.i("pidor", String.valueOf(distanceTemp) + data.getDistance());
+        String distanceUnits;
+        if (distanceTemp <= 1000.0) {
+            distanceUnits = "m";
+        } else {
+            distanceTemp /= 1000.0;
+            distanceUnits = "km";
+        }
+
+        distance.setText(String.format("%.1f %s", distanceTemp, distanceUnits).replace(',', '.'));
+        Log.i("pidor", String.valueOf(distance.getText()));
+
+        if (distanceValue != data.getDistance()) {
+            double distance = sharedPreferencesManager.getDistance();
+            distance += (distanceTemp - distanceValue);
+
+            data.setSessionDistanceM(distanceTemp);
+
+            sharedPreferencesManager.setDistance((float) distance);
+
+            distanceValue = distanceTemp;
+            showTotalDistance();
+        }
+
+        if (data.getLocation().hasAccuracy()) {
+            double acc = data.getLocation().getAccuracy();
+            String units = "m";
+
+            SpannableString s = new SpannableString(String.format("%.0f %s", acc, units));
+            s.setSpan(new RelativeSizeSpan(0.75f), s.length() - units.length() - 1, s.length(), 0);
+            accuracy.setText(s);
+
+            if (firstfix) {
+                status.setText("");
+                firstfix = false;
+            }
+        } else {
+            firstfix = true;
+        }
+
+        if (data.getLocation().hasSpeed()) {
+            double speed = data.getLocation().getSpeed() * 3.6;
+            currentSpeed.setText(String.format("%.0f", speed));
+        }
     }
 
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString(SIGN_LIST, new Gson().toJson(adapter.getSigns()));
-        outState.putString(DISTANCE, distance.getText().toString());
-        outState.putDouble(DISTANCE_VAL, data.getDistance());
-        Log.i("distance", "save Distance = " + distance.getText().toString());
-
+        outState.putDouble(DISTANCE, distanceValue);
     }
 
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
@@ -170,10 +226,7 @@ public class DetectorActivity extends CameraActivity
         }
         adapter.setSigns(items);
 
-        String savedDistance = savedInstanceState.getString(DISTANCE, "0 km");
-        Log.i("distance", "savedDistance = " + savedDistance);
-        distance.setText(savedDistance);
-        data.addDistance(savedInstanceState.getDouble(DISTANCE_VAL, 0));
+        distanceValue = savedInstanceState.getDouble(DISTANCE);
     }
 
     @SuppressLint("DefaultLocale")
@@ -226,24 +279,6 @@ public class DetectorActivity extends CameraActivity
     public synchronized void onResume() {
         super.onResume();
 
-        if (mLocationManager.getAllProviders().indexOf(LocationManager.GPS_PROVIDER) >= 0) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermission();
-                    return;
-                }
-            }
-            mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
-        } else {
-            Log.w("MainActivity", "No GPS location provider found. GPS data display will not be available.");
-        }
-
-        if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            showGpsDisabledDialog();
-        }
-
-        mLocationManager.addGpsStatusListener(this);
-
         ringtone = RingtoneManager.getRingtone(getApplicationContext(),
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
     }
@@ -251,9 +286,6 @@ public class DetectorActivity extends CameraActivity
     @Override
     public synchronized void onPause() {
         super.onPause();
-        mLocationManager.removeUpdates(this);
-        mLocationManager.removeGpsStatusListener(this);
-
         ringtone = null;
     }
 
@@ -262,7 +294,7 @@ public class DetectorActivity extends CameraActivity
         final float textSizePx =
                 TypedValue.applyDimension(
                         TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
-        borderedText = new BorderedText(textSizePx);
+        BorderedText borderedText = new BorderedText(textSizePx);
         borderedText.setTypeface(Typeface.MONOSPACE);
 
         tracker = new MultiBoxTracker(this);
@@ -291,7 +323,7 @@ public class DetectorActivity extends CameraActivity
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();
 
-        sensorOrientation = rotation - getScreenOrientation();
+        Integer sensorOrientation = rotation - getScreenOrientation();
         LOGGER.i("Camera orientation relative to screen canvas: %d", sensorOrientation);
 
         LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);
@@ -446,58 +478,16 @@ public class DetectorActivity extends CameraActivity
 
     @SuppressLint("DefaultLocale")
     private void setupLocation() {
-
-        data = new Data(onGpsServiceUpdate);
-
         satellite = findViewById(R.id.satellite_info);
         status = findViewById(R.id.gps_status_info);
         accuracy = findViewById(R.id.accuracy_info);
         distance = findViewById(R.id.distanceValueTxt);
         totalDistance = findViewById(R.id.totalDistanceValueTxt);
         currentSpeed = findViewById(R.id.currentSpeedTxt);
-//
-        onGpsServiceUpdate = () -> {
-            double maxSpeedTemp = data.getMaxSpeed();
-            double distanceTemp = data.getDistance();
-            double averageTemp = data.getAverageSpeed();
-
-            String speedUnits = "km/h";
-            String distanceUnits;
-            if (distanceTemp <= 1000.0) {
-                distanceUnits = "m";
-            } else {
-                distanceTemp /= 1000.0;
-                distanceUnits = "km";
-            }
-
-            distance.setText(String.format("%.1f %s", distanceTemp, distanceUnits).replace(',', '.'));
-            Log.i("distance", "onGpsServiceUpdate Distance = " + distance.getText().toString());
-
-            Log.i("distance", "distanceValue Distance = " + distanceValue);
-
-            if (distanceValue != distanceTemp) {
-                double distance = sharedPreferencesManager.getDistance();
-                Log.i("distance", "sharedPreferencesManager Distance = " + distance);
-
-                distance += (distanceTemp - distanceValue);
-
-                Log.i("distance", "setDistance Distance = " + distance);
-
-                sharedPreferencesManager.setDistance((float) distance);
-
-                distanceValue = distanceTemp;
-                showTotalDistance();
-            }
-
-        };
-
-        data.setOnGpsServiceUpdate(onGpsServiceUpdate);
-        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        data.setRunning(true);
-        data.setFirstTime(true);
     }
 
-    private void showTotalDistance(){
+
+    private void showTotalDistance() {
         double distance = sharedPreferencesManager.getDistance();
         String distanceUnits;
         if (distance <= 1000.0) {
@@ -515,15 +505,11 @@ public class DetectorActivity extends CameraActivity
 
     private void setupRecycler() {
         adapter = new SignAdapter(this);
-        signs = new ArrayList<>();
+        ArrayList<SignEntity> signs = new ArrayList<>();
 
-        signRecycler = findViewById(R.id.signRecycler);
+        RecyclerView signRecycler = findViewById(R.id.signRecycler);
         signRecycler.setAdapter(adapter);
         signRecycler.setLayoutManager(new LinearLayoutManager(this));
-    }
-
-    public static Data getData() {
-        return data;
     }
 
     @Override
@@ -546,76 +532,10 @@ public class DetectorActivity extends CameraActivity
         runInBackground(() -> detector.setNumThreads(numThreads));
     }
 
-    @Override
-    public void onGpsStatusChanged(int event) {
-        switch (event) {
-            case GPS_EVENT_SATELLITE_STATUS:
-                @SuppressLint("MissingPermission") GpsStatus gpsStatus = mLocationManager.getGpsStatus(null);
-                int satsInView = 0;
-                int satsUsed = 0;
-                Iterable<GpsSatellite> sats = gpsStatus.getSatellites();
-                for (GpsSatellite sat : sats) {
-                    satsInView++;
-                    if (sat.usedInFix()) {
-                        satsUsed++;
-                    }
-                }
-                satellite.setText(satsUsed + "/" + satsInView);
-                if (satsUsed == 0) {
-                    data.setRunning(false);
-                    status.setText("");
-                    stopService(new Intent(getBaseContext(), GpsService.class));
-                    accuracy.setText("");
-                    status.setText(getResources().getString(R.string.waiting_for_fix));
-                    firstfix = true;
-                }
-                break;
-
-            case GpsStatus.GPS_EVENT_STOPPED:
-                if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-                    showGpsDisabledDialog();
-                }
-                break;
-            case GpsStatus.GPS_EVENT_FIRST_FIX:
-                break;
-        }
-    }
-
-    @SuppressLint("DefaultLocale")
-    @Override
-    public void onLocationChanged(Location location) {
-        if (location.hasAccuracy()) {
-            double acc = location.getAccuracy();
-            String units = "m";
-
-            SpannableString s = new SpannableString(String.format("%.0f %s", acc, units));
-            s.setSpan(new RelativeSizeSpan(0.75f), s.length() - units.length() - 1, s.length(), 0);
-            accuracy.setText(s);
-
-            if (firstfix) {
-                status.setText("");
-                firstfix = false;
-            }
-        } else {
-            firstfix = true;
-        }
-
-        if (location.hasSpeed()) {
-            double speed = location.getSpeed() * 3.6;
-            currentSpeed.setText(String.format("%.0f", speed));
-        }
-    }
-
-    @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {
-    }
-
-    @Override
-    public void onProviderEnabled(String provider) {
-    }
-
-    @Override
-    public void onProviderDisabled(String provider) {
+    public void onGpsStatusChanged(GpsStatusEntity event) {
+        satellite.setText(event.getSatellite());
+        status.setText(event.getStatus());
+        accuracy.setText(event.getAccuracy());
     }
 
     private void showGpsDisabledDialog() {
@@ -682,7 +602,9 @@ public class DetectorActivity extends CameraActivity
 
         if (sign != null) {
             sign.setScreenLocation(result.getLocation());
-            sign.setLocation(data.getLocation());
+            if (data != null) {
+                sign.setLocation(data.getLocation());
+            }
 
             if (sign.getName().contains("speed") && sign.isValidSize(rgbFrameBitmap)) {
                 try {
@@ -710,6 +632,18 @@ public class DetectorActivity extends CameraActivity
     @Override
     public synchronized void onDestroy() {
         super.onDestroy();
+        if (compositeDisposable != null) {
+            compositeDisposable.dispose();
+            compositeDisposable = null;
+        }
         stopService(new Intent(getBaseContext(), GpsService.class));
     }
+
+    private void inject() {
+        DaggerScreenComponent.builder()
+                .applicationComponent(getApplicationComponent())
+                .build()
+                .inject(this);
+    }
+
 }

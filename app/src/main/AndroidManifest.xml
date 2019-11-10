@@ -30,7 +30,9 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".service.GpsService"/>
+        <service android:name=".service.GpsService"
+            android:enabled="true"
+            android:exported="true" />
 
     </application>
 </manifest>

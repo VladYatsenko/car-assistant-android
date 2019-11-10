@@ -13,19 +13,29 @@ public class Data {
     private double curSpeed;
     private double maxSpeed;
 
+    private double sessionDistanceM;
+
     private Location location;
 
     private OnGpsServiceUpdate onGpsServiceUpdate;
 
-    public interface OnGpsServiceUpdate{
+    public double getSessionDistanceM() {
+        return sessionDistanceM;
+    }
+
+    public void setSessionDistanceM(double sessionDistanceM) {
+        this.sessionDistanceM = sessionDistanceM;
+    }
+
+    public interface OnGpsServiceUpdate {
         void update();
     }
 
-    public void setOnGpsServiceUpdate(OnGpsServiceUpdate onGpsServiceUpdate){
+    public void setOnGpsServiceUpdate(OnGpsServiceUpdate onGpsServiceUpdate) {
         this.onGpsServiceUpdate = onGpsServiceUpdate;
     }
 
-    public void update(){
+    public void update() {
         if (onGpsServiceUpdate != null)
             onGpsServiceUpdate.update();
     }
@@ -38,16 +48,20 @@ public class Data {
         timeStopped = 0;
     }
 
-    public Data(OnGpsServiceUpdate onGpsServiceUpdate){
+    public Data(OnGpsServiceUpdate onGpsServiceUpdate) {
         this();
         setOnGpsServiceUpdate(onGpsServiceUpdate);
     }
 
-    public void addDistance(double distance){
+    public void setDistance(double distance) {
+        distanceM = distance;
+    }
+
+    public void addDistance(double distance) {
         distanceM = distanceM + distance;
     }
 
-    public double getDistance(){
+    public double getDistance() {
         return distanceM;
     }
 
@@ -55,7 +69,7 @@ public class Data {
         return maxSpeed;
     }
 
-    public double getAverageSpeed(){
+    public double getAverageSpeed() {
         double average;
         String units;
         if (time <= 0) {
@@ -66,11 +80,11 @@ public class Data {
         return average;
     }
 
-    public double getAverageSpeedMotion(){
+    public double getAverageSpeedMotion() {
         long motionTime = time - timeStopped;
         double average;
         String units;
-        if (motionTime <= 0){
+        if (motionTime <= 0) {
             average = 0.0;
         } else {
             average = (distanceM / (motionTime / 1000.0)) * 3.6;
@@ -80,7 +94,7 @@ public class Data {
 
     public void setCurSpeed(double curSpeed) {
         this.curSpeed = curSpeed;
-        if (curSpeed > maxSpeed){
+        if (curSpeed > maxSpeed) {
             maxSpeed = curSpeed;
         }
     }
@@ -117,7 +131,7 @@ public class Data {
         this.time = time;
     }
 
-    public void setLocation(Location location){
+    public void setLocation(Location location) {
         this.location = location;
     }
 

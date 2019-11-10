@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.location.GpsSatellite;
 import android.location.GpsStatus;
 import android.location.Location;
 import android.location.LocationListener;
@@ -17,14 +18,21 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 
 import com.carassistant.R;
+import com.carassistant.model.bus.MessageEventBus;
+import com.carassistant.model.bus.model.EventUpdateLocation;
+import com.carassistant.model.bus.model.EventUpdateStatus;
 import com.carassistant.model.entity.Data;
+import com.carassistant.model.entity.GpsStatusEntity;
 import com.carassistant.ui.activities.DetectorActivity;
+
+import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
 
 public class GpsService extends Service implements LocationListener, GpsStatus.Listener {
 
@@ -56,46 +64,48 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         mLocationManager.addGpsStatusListener(this);
         mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, this);
+
+        if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            showGpsDisabledDialog();
+        }
     }
 
     @Override
     public void onLocationChanged(Location location) {
-        data = DetectorActivity.getData();
-        if (data.isRunning()){
 
-            data.setLocation(location);
-            currentLat = location.getLatitude();
-            currentLon = location.getLongitude();
+        updateNotification(true);
 
-            if (data.isFirstTime()){
-                lastLat = currentLat;
-                lastLon = currentLon;
-                data.setFirstTime(false);
-            }
+        data = new Data();
+        data.setLocation(location);
+        currentLat = location.getLatitude();
+        currentLon = location.getLongitude();
 
+        double distance = 0;
+
+        if (lastLat != 0 && lastLon != 0){
             lastlocation.setLatitude(lastLat);
             lastlocation.setLongitude(lastLon);
-            double distance = lastlocation.distanceTo(location);
-
-            if (location.getAccuracy() < distance){
-                data.addDistance(distance);
-
-                lastLat = currentLat;
-                lastLon = currentLon;
-            }
-
-            if (location.hasSpeed()) {
-                data.setCurSpeed(location.getSpeed() * 3.6);
-                if(location.getSpeed() == 0){
-                    new isStillStopped().execute();
-                }
-            }
-            data.update();
-            updateNotification(true);
+            distance = lastlocation.distanceTo(location);
         }
+
+        if (location.getAccuracy() < distance || distance == 0) {
+            data.setDistance(distance);
+            lastLat = currentLat;
+            lastLon = currentLon;
+        }
+
+        if (location.hasSpeed()) {
+            data.setCurSpeed(location.getSpeed() * 3.6);
+            if (location.getSpeed() == 0) {
+                new isStillStopped().execute();
+            }
+        }
+
+        MessageEventBus.INSTANCE.send(new EventUpdateLocation(data));
+
     }
 
-    public void showGpsDisabledDialog(){
+    public void showGpsDisabledDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(getString(R.string.gps_disabled))
                 .setMessage(getString(R.string.please_enable_gps))
@@ -106,7 +116,7 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
     }
 
 
-    public void updateNotification(boolean asData){
+    public void updateNotification(boolean asData) {
 
         String channelId = "Car assistant";
         String channelName = "Location";
@@ -125,6 +135,7 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(getBaseContext(), channelId)
                 .setContentTitle(getString(R.string.app_name))
+                .setContentText(String.format("Location", '-', '-'))
                 .setSmallIcon(R.drawable.ic_directions_car)
                 .setColor(ContextCompat.getColor(this, R.color.orange))
                 .setPriority(Notification.PRIORITY_LOW)
@@ -135,11 +146,6 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
                 .setVibrate(new long[]{0})
                 .setContentIntent(contentIntent);
 
-        if(asData){
-            builder.setContentText(String.format("Location", data.getMaxSpeed(), data.getDistance()));
-        }else{
-            builder.setContentText(String.format("Location", '-', '-'));
-        }
         Notification notification = builder.build();
         startForeground(1, notification);
     }
@@ -148,22 +154,21 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
     public int onStartCommand(Intent intent, int flags, int startId) {
         // If we get killed, after returning from here, restart
         return START_STICKY;
-    }   
-       
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         // We don't provide binding, so return null
         return callServiceBinder;
     }
 
-    public class GpsServiceBinder extends Binder  {
-        public GpsService getService(){
+    public class GpsServiceBinder extends Binder {
+        public GpsService getService() {
             return GpsService.this;
         }
     }
 
 
-   
     /* Remove the locationlistener updates when Services is stopped */
     @Override
     public void onDestroy() {
@@ -173,19 +178,58 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
     }
 
     @Override
-    public void onGpsStatusChanged(int event) {}
+    public void onGpsStatusChanged(int event) {
+        switch (event) {
+            case GPS_EVENT_SATELLITE_STATUS:
+                @SuppressLint("MissingPermission") GpsStatus gpsStatus = mLocationManager.getGpsStatus(null);
+                int satsInView = 0;
+                int satsUsed = 0;
+                Iterable<GpsSatellite> sats = gpsStatus.getSatellites();
+                for (GpsSatellite sat : sats) {
+                    satsInView++;
+                    if (sat.usedInFix()) {
+                        satsUsed++;
+                    }
+                }
+
+                String satellite = satsUsed + "/" + satsInView;
+                String accuracy = null;
+                String status = null;
+                if (satsUsed == 0) {
+                    stopService(new Intent(getBaseContext(), GpsService.class));
+                    accuracy = "";
+                    status = getResources().getString(R.string.waiting_for_fix);
+                }
+
+                MessageEventBus.INSTANCE.send(new EventUpdateStatus(new GpsStatusEntity(satellite, status, accuracy)));
+
+                break;
+
+            case GpsStatus.GPS_EVENT_STOPPED:
+                if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    showGpsDisabledDialog();
+                }
+                break;
+            case GpsStatus.GPS_EVENT_FIRST_FIX:
+                break;
+        }
+    }
 
     @Override
-    public void onProviderDisabled(String provider) {}
-   
+    public void onProviderDisabled(String provider) {
+    }
+
     @Override
-    public void onProviderEnabled(String provider) {}
-   
+    public void onProviderEnabled(String provider) {
+    }
+
     @Override
-    public void onStatusChanged(String provider, int status, Bundle extras) {}
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+    }
 
     class isStillStopped extends AsyncTask<Void, Integer, String> {
         int timer = 0;
+
         @Override
         protected String doInBackground(Void... unused) {
             try {
