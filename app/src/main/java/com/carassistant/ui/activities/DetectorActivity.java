@@ -2,10 +2,8 @@ package com.carassistant.ui.activities;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
@@ -26,7 +24,6 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.IBinder;
 import android.os.SystemClock;
 import android.text.SpannableString;
 import android.text.style.RelativeSizeSpan;
@@ -212,21 +209,22 @@ public class DetectorActivity extends CameraActivity
 
             }
         });
+        showTotalDistance();
 
-        totalDistance.setText(
-                String.format("%.1f %s", sharedPreferencesManager.getDistance(), "km")
-                        .replace(',', '.')
-                        .replace(".0", ""));
+    }
+
+    @Override
+    public synchronized void onStart() {
+        super.onStart();
+        if (hasPermission()) {
+            Intent intent = new Intent(this, GpsService.class);
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        }
     }
 
     @Override
     public synchronized void onResume() {
         super.onResume();
-
-        if(hasPermission()) {
-            Intent intent = new Intent(this, GpsService.class);
-            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-        }
 
         if (mLocationManager.getAllProviders().indexOf(LocationManager.GPS_PROVIDER) >= 0) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -399,7 +397,7 @@ public class DetectorActivity extends CameraActivity
 
         ArrayList<SignEntity> list = new ArrayList<>(adapter.getSigns());
 
-        if (list.isEmpty()){
+        if (list.isEmpty()) {
             addSignToAdapter(sign);
             return;
         }
@@ -414,7 +412,7 @@ public class DetectorActivity extends CameraActivity
 
     }
 
-    private void addSignToAdapter(SignEntity sign){
+    private void addSignToAdapter(SignEntity sign) {
         adapter.setSign(sign);
         playNotification();
     }
@@ -426,7 +424,7 @@ public class DetectorActivity extends CameraActivity
 
     private boolean isTimeDifferenceValid(Date date1, Date date2) {
         long milliseconds = date1.getTime() - date2.getTime();
-        Log.i("sign", "isTimeDifferenceValid "+ ((milliseconds / (1000)) > 30));
+        Log.i("sign", "isTimeDifferenceValid " + ((milliseconds / (1000)) > 30));
         return (int) (milliseconds / (1000)) > 30;
     }
 
@@ -481,16 +479,14 @@ public class DetectorActivity extends CameraActivity
                 double distance = sharedPreferencesManager.getDistance();
                 Log.i("distance", "sharedPreferencesManager Distance = " + distance);
 
-                if (distanceUnits.equals("m"))
-                    distance += (distanceTemp - distanceValue) / 1000.0;
-                else distance += (distanceTemp - distanceValue);
+                distance += (distanceTemp - distanceValue);
 
                 Log.i("distance", "setDistance Distance = " + distance);
 
                 sharedPreferencesManager.setDistance((float) distance);
 
                 distanceValue = distanceTemp;
-                totalDistance.setText(String.format("%.1f %s", distance, "km").replace(',', '.').replace(".0", ""));
+                showTotalDistance();
             }
 
         };
@@ -499,6 +495,22 @@ public class DetectorActivity extends CameraActivity
         mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         data.setRunning(true);
         data.setFirstTime(true);
+    }
+
+    private void showTotalDistance(){
+        double distance = sharedPreferencesManager.getDistance();
+        String distanceUnits;
+        if (distance <= 1000.0) {
+            distanceUnits = "m";
+        } else {
+            distance /= 1000.0;
+            distanceUnits = "km";
+        }
+
+        totalDistance.setText(
+                String.format("%.1f %s", distance, distanceUnits)
+                        .replace(',', '.')
+                        .replace(".0", ""));
     }
 
     private void setupRecycler() {

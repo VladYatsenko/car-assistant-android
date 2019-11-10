@@ -333,17 +333,16 @@ public abstract class CameraActivity extends AppCompatActivity
             LOGGER.e(e, "Exception!");
         }
 
-        if (mBound) {
-            unbindService(mConnection);
-            mBound = false;
-        }
-
         super.onPause();
     }
 
     @Override
     public synchronized void onStop() {
         LOGGER.d("onStop " + this);
+        if (mBound) {
+            unbindService(serviceConnection);
+            mBound = false;
+        }
         super.onStop();
     }
 
@@ -369,7 +368,7 @@ public abstract class CameraActivity extends AppCompatActivity
                     && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
                 setFragment();
                 Intent intent = new Intent(this, GpsService.class);
-                bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+                bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
             } else {
 //                requestPermission();
             }
@@ -378,7 +377,7 @@ public abstract class CameraActivity extends AppCompatActivity
 
     protected GpsService mService;
     protected boolean mBound = false;
-    protected ServiceConnection mConnection = new ServiceConnection() {
+    protected ServiceConnection serviceConnection = new ServiceConnection() {
 
         @Override
         public void onServiceConnected(ComponentName className,

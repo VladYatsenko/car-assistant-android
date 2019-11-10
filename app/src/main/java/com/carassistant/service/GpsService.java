@@ -42,6 +42,7 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
 
     private GpsServiceBinder callServiceBinder = new GpsServiceBinder();
 
+    @SuppressLint("MissingPermission")
     @Override
     public void onCreate() {
 
