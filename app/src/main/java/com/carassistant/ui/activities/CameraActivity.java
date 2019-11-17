@@ -313,6 +313,10 @@ public abstract class CameraActivity extends AppCompatActivity
     public synchronized void onResume() {
         LOGGER.d("onResume " + this);
         super.onResume();
+        if (hasPermission()) {
+            Intent intent = new Intent(this, GpsService.class);
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        }
 
         handlerThread = new HandlerThread("inference");
         handlerThread.start();
@@ -322,6 +326,11 @@ public abstract class CameraActivity extends AppCompatActivity
     @Override
     public synchronized void onPause() {
         LOGGER.d("onPause " + this);
+
+        if (mBound) {
+            unbindService(serviceConnection);
+            mBound = false;
+        }
 
         handlerThread.quitSafely();
         try {
@@ -338,10 +347,7 @@ public abstract class CameraActivity extends AppCompatActivity
     @Override
     public synchronized void onStop() {
         LOGGER.d("onStop " + this);
-        if (mBound) {
-            unbindService(serviceConnection);
-            mBound = false;
-        }
+
         super.onStop();
     }
 

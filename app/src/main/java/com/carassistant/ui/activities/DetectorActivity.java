@@ -45,6 +45,7 @@ import com.carassistant.R;
 import com.carassistant.di.components.DaggerScreenComponent;
 import com.carassistant.managers.SharedPreferencesManager;
 import com.carassistant.model.bus.MessageEventBus;
+import com.carassistant.model.bus.model.EventGpsDisabled;
 import com.carassistant.model.bus.model.EventUpdateLocation;
 import com.carassistant.model.bus.model.EventUpdateStatus;
 import com.carassistant.model.entity.Data;
@@ -155,6 +156,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                     if (eventModel instanceof EventUpdateStatus) {
                         onGpsStatusChanged(((EventUpdateStatus) eventModel).getStatus());
                     }
+                    if (eventModel instanceof EventGpsDisabled) {
+                        showGpsDisabledDialog();
+                    }
                 }));
     }
 
@@ -162,7 +166,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         this.data = data;
 
         double distanceTemp = distanceValue + data.getDistance();
-        Log.i("pidor", String.valueOf(distanceTemp) + data.getDistance());
+
         String distanceUnits;
         if (distanceTemp <= 1000.0) {
             distanceUnits = "m";
@@ -172,7 +176,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         }
 
         distance.setText(String.format("%.1f %s", distanceTemp, distanceUnits).replace(',', '.'));
-        Log.i("pidor", String.valueOf(distance.getText()));
+
 
         if (distanceValue != data.getDistance()) {
             double distance = sharedPreferencesManager.getDistance();
@@ -269,16 +273,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     @Override
     public synchronized void onStart() {
         super.onStart();
-        if (hasPermission()) {
-            Intent intent = new Intent(this, GpsService.class);
-            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-        }
+
     }
 
     @Override
     public synchronized void onResume() {
         super.onResume();
-
         ringtone = RingtoneManager.getRingtone(getApplicationContext(),
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
     }

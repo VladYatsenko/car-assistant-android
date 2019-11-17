@@ -18,6 +18,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -26,6 +27,7 @@ import androidx.core.content.ContextCompat;
 
 import com.carassistant.R;
 import com.carassistant.model.bus.MessageEventBus;
+import com.carassistant.model.bus.model.EventGpsDisabled;
 import com.carassistant.model.bus.model.EventUpdateLocation;
 import com.carassistant.model.bus.model.EventUpdateStatus;
 import com.carassistant.model.entity.Data;
@@ -106,13 +108,7 @@ public class GpsService extends Service implements LocationListener, GpsStatus.L
     }
 
     public void showGpsDisabledDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(getString(R.string.gps_disabled))
-                .setMessage(getString(R.string.please_enable_gps))
-                .setPositiveButton(android.R.string.ok, (dialog, id) -> {
-                    startActivity(new Intent("android.settings.LOCATION_SOURCE_SETTINGS"));
-                });
-        builder.create().show();
+        MessageEventBus.INSTANCE.send(new EventGpsDisabled());
     }
 
 
