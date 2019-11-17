@@ -271,12 +271,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     }
 
     @Override
-    public synchronized void onStart() {
-        super.onStart();
-
-    }
-
-    @Override
     public synchronized void onResume() {
         super.onResume();
         ringtone = RingtoneManager.getRingtone(getApplicationContext(),
@@ -505,7 +499,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     private void setupRecycler() {
         adapter = new SignAdapter(this);
-        ArrayList<SignEntity> signs = new ArrayList<>();
 
         RecyclerView signRecycler = findViewById(R.id.signRecycler);
         signRecycler.setAdapter(adapter);
@@ -557,47 +550,47 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private SignEntity getSignImage(Classifier.Recognition result, Bitmap bitmap) {
         SignEntity sign = null;
         if ("crosswalk".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.crosswalk);
+            sign = new SignEntity(result.getTitle(), R.drawable.crosswalk, R.raw.crosswalk);
         } else if ("stop".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.stop);
+            sign = new SignEntity(result.getTitle(), R.drawable.stop, R.raw.stop);
         } else if ("main road".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.main_road);
+            sign = new SignEntity(result.getTitle(), R.drawable.main_road, R.raw.main_road);
         } else if ("give road".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.give_road);
+            sign = new SignEntity(result.getTitle(), R.drawable.give_road, R.raw.give_road);
         } else if ("children".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.children);
+            sign = new SignEntity(result.getTitle(), R.drawable.children, R.raw.children);
         } else if ("dont stop".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.dont_stop);
+            sign = new SignEntity(result.getTitle(), R.drawable.dont_stop, R.raw.dont_stop);
         } else if ("no parking".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.no_parking);
+            sign = new SignEntity(result.getTitle(), R.drawable.no_parking, R.raw.no_parking);
         } else if ("dont move".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.dont_move);
+            sign = new SignEntity(result.getTitle(), R.drawable.dont_move, R.raw.dont_move);
         } else if ("dont enter".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.dont_enter);
-        } else if ("no overtake".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.no_overtake);
+            sign = new SignEntity(result.getTitle(), R.drawable.dont_enter, R.raw.dont_enter);
+        } else if ("dont overtake".equals(result.getTitle())) {
+            sign = new SignEntity(result.getTitle(), R.drawable.no_overtake, R.raw.dont_overtake);
         } else if ("speed limit 5".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_5);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_5, R.raw.speed_limit_5);
         } else if ("speed limit 10".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_10);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_10, R.raw.speed_limit_10);
         } else if ("speed limit 20".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_20);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_20, R.raw.speed_limit_20);
         } else if ("speed limit 30".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_30);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_30, R.raw.speed_limit_30);
         } else if ("speed limit 40".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_40);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_40, R.raw.speed_limit_40);
         } else if ("speed limit 50".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_50);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_50, R.raw.speed_limit_50);
         } else if ("speed limit 60".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_60);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_60, R.raw.speed_limit_60);
         } else if ("speed limit 70".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_70);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_70, R.raw.speed_limit_70);
         } else if ("speed limit 80".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_80);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_80, R.raw.speed_limit_80);
         } else if ("speed limit 90".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_90);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_90, R.raw.speed_limit_90);
         } else if ("speed limit 100".equals(result.getTitle())) {
-            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_100);
+            sign = new SignEntity(result.getTitle(), R.drawable.speed_limit_100, R.raw.speed_limit_100);
         }
 
         if (sign != null) {

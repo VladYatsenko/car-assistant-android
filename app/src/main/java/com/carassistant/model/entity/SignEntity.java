@@ -20,14 +20,16 @@ public class SignEntity implements Serializable {
     private Date date;
     private RectF screenLocation;
     private Location location;
+    @IdRes
+    private int soundNotification;
 //    private Location
 
-    public SignEntity(String name, int image) {
+    public SignEntity(String name, int image, int soundNotification) {
         this.uuid = UUID.randomUUID();
         this.name = name;
         this.image = image;
         this.date = new Date();
-//        this.screenLocation = screenLocation;
+        this.soundNotification = soundNotification;
 //        this.location = location;
     }
 
@@ -61,6 +63,10 @@ public class SignEntity implements Serializable {
 
     public Location getLocation() {
         return location;
+    }
+
+    public int getSoundNotification() {
+        return soundNotification;
     }
 
     public boolean isValidSize(Bitmap rgbFrameBitmap) {
