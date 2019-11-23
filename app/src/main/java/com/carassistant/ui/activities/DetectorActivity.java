@@ -125,7 +125,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private TextView currentSpeed, distance, satellite, status, accuracy, totalDistance;
     private SignAdapter adapter;
 
-    private SwitchCompat notification;
+    private SwitchCompat notification, classifier;
     private double distanceValue = 0;
     private CompositeDisposable compositeDisposable;
     private MediaPlayerHolder mediaPlayerHolder;
@@ -270,6 +270,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             if (!isChecked)
                 mediaPlayerHolder.reset();
         });
+        classifier = findViewById(R.id.classifier_switch);
 
         SeekBar confidenceSeekBar = findViewById(R.id.confidence_seek);
         confidenceSeekBar.setMax(100);
@@ -617,7 +618,10 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 sign.setLocation(data.getLocation());
             }
 
-            if (sign.getName().contains("speed") && sign.isValidSize(rgbFrameBitmap) && speedLimitClassifier != null) {
+            if (sign.getName().contains("speed")
+                    && sign.isValidSize(rgbFrameBitmap)
+                    && speedLimitClassifier != null
+                    && classifier.isChecked()) {
                 try {
                     SignEntity finalSign = sign;
 
@@ -635,6 +639,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
                                 List<ClassificationEntity> recognitions =
                                         speedLimitClassifier.recognizeImage(prepareImageForClassification(crop));
+
                                 Toast.makeText(DetectorActivity.this, new Gson().toJson(recognitions), Toast.LENGTH_SHORT).show();
                             });
 

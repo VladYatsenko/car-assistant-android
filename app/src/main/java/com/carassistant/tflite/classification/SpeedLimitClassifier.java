@@ -23,10 +23,10 @@ public class SpeedLimitClassifier {
 
     private final Interpreter interpreter;
 
-    public static String MODEL_FILENAME = "classifier.tflite";
+    public static String MODEL_FILENAME = "classifier_224.tflite";
 
-    private static final int INPUT_IMG_SIZE_WIDTH = 128;
-    private static final int INPUT_IMG_SIZE_HEIGHT = 128;
+    public static final int INPUT_IMG_SIZE_WIDTH = 224;
+    public static final int INPUT_IMG_SIZE_HEIGHT = 224;
     private static final int FLOAT_TYPE_SIZE = 4;
     private static final int PIXEL_SIZE = 3;
     private static final int MODEL_INPUT_SIZE = FLOAT_TYPE_SIZE * INPUT_IMG_SIZE_WIDTH * INPUT_IMG_SIZE_HEIGHT * PIXEL_SIZE;
