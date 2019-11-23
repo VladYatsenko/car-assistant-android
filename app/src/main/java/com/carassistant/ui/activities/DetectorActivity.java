@@ -34,6 +34,7 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
@@ -164,6 +165,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 }));
     }
 
+    @SuppressLint({"ResourceType", "DefaultLocale"})
     private void refresh(Data data) {
         this.data = data;
 
@@ -210,6 +212,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         if (data.getLocation().hasSpeed()) {
             double speed = data.getLocation().getSpeed() * 3.6;
+            if (speed > 50){
+                mediaPlayerHolder.loadMedia(R.raw.speed_limit_was_exceeded);
+            }
             currentSpeed.setText(String.format("%.0f", speed));
         }
     }
@@ -321,7 +326,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();
 
-        Integer sensorOrientation = rotation - getScreenOrientation();
+        int sensorOrientation = rotation - getScreenOrientation();
         LOGGER.i("Camera orientation relative to screen canvas: %d", sensorOrientation);
 
         LOGGER.i("Initializing at size %dx%d", previewWidth, previewHeight);

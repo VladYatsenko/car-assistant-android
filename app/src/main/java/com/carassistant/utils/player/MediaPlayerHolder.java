@@ -3,11 +3,11 @@ package com.carassistant.utils.player;
 import android.content.Context;
 import android.media.MediaPlayer;
 import android.net.Uri;
-import android.util.Log;
 
 import androidx.annotation.IdRes;
 
-import java.io.IOException;
+import com.carassistant.R;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,7 +29,6 @@ public class MediaPlayerHolder implements PlayerAdapter {
                 mMediaPlayer.start();
             });
             mMediaPlayer.setOnCompletionListener(mp -> {
-                mMediaPlayer.reset();
                 playNext();
             });
         }
@@ -39,13 +38,14 @@ public class MediaPlayerHolder implements PlayerAdapter {
     public void loadMedia(@IdRes int resId) {
         initializeMediaPlayer();
 
-        if (isPlaying()){
+        if (isPlaying() && resId != R.raw.speed_limit_was_exceeded){
             soundList.add(resId);
             return;
         }
         Uri mediaPath = Uri.parse("android.resource://" + context.getPackageName() + "/" + resId);
 
         try {
+            mMediaPlayer.reset();
             mMediaPlayer.setDataSource(context, mediaPath);
         } catch (Exception e) {}
 
