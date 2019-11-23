@@ -1,7 +1,6 @@
 package com.carassistant.model.bus.model;
 
 import com.carassistant.model.bus.EventModel;
-import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.GpsStatusEntity;
 
 public class EventUpdateStatus implements EventModel {

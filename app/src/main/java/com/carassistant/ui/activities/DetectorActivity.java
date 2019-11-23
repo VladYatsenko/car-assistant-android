@@ -60,6 +60,7 @@ import com.carassistant.utils.customview.OverlayView;
 import com.carassistant.utils.env.BorderedText;
 import com.carassistant.utils.env.ImageUtils;
 import com.carassistant.utils.env.Logger;
+import com.carassistant.utils.player.MediaPlayerHolder;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
@@ -119,21 +120,22 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private TextView currentSpeed, distance, satellite, status, accuracy, totalDistance;
     private SignAdapter adapter;
 
-    private Ringtone ringtone = null;
+    //    private Ringtone ringtone = null;
     SwitchCompat notification;
     private double distanceValue = 0;
     private CompositeDisposable compositeDisposable;
+    private MediaPlayerHolder mediaPlayerHolder;
 
     @Inject
     SharedPreferencesManager sharedPreferencesManager;
 
     private final String SIGN_LIST = "sign_list";
     private final String DISTANCE = "distance";
-    private final String DISTANCE_VAL = "distance_val";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mediaPlayerHolder = new MediaPlayerHolder(this);
 
         inject();
         setupLocation();
@@ -244,6 +246,10 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         );
 
         notification = findViewById(R.id.notification_switch);
+        notification.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (!isChecked)
+                mediaPlayerHolder.reset();
+        });
 
         SeekBar confidenceSeekBar = findViewById(R.id.confidence_seek);
         confidenceSeekBar.setMax(100);
@@ -273,14 +279,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     @Override
     public synchronized void onResume() {
         super.onResume();
-        ringtone = RingtoneManager.getRingtone(getApplicationContext(),
-                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION));
     }
 
     @Override
     public synchronized void onPause() {
         super.onPause();
-        ringtone = null;
+        mediaPlayerHolder.reset();
     }
 
     @Override
@@ -440,7 +444,9 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     private void addSignToAdapter(SignEntity sign) {
         adapter.setSign(sign);
-        playNotification();
+        if (notification.isChecked()) {
+            mediaPlayerHolder.loadMedia(sign.getSoundNotification());
+        }
     }
 
     private boolean isRemoveValid(SignEntity sign1, SignEntity sign2) {
@@ -458,16 +464,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         if (location1 == null || location2 == null)
             return false;
         return location1.distanceTo(location2) > 5;
-    }
-
-    private void playNotification() {
-        try {
-            if (!ringtone.isPlaying() && notification.isChecked()) {
-                ringtone.play();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 
     @SuppressLint("DefaultLocale")
