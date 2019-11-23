@@ -15,14 +15,33 @@
         android:layout_width="64dp"
         android:layout_height="64dp" />
 
-    <TextView
-        android:id="@+id/signName"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:fontFamily="@font/gotham_rounded_medium"
-        android:textSize="24sp"
-        android:textColor="@color/cod_gray"
-        android:layout_marginStart="16dp"
-        tools:text="Speed limit 80 km/h"/>
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/signName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:fontFamily="@font/gotham_rounded_medium"
+            android:textColor="@color/cod_gray"
+            android:textSize="24sp"
+            tools:text="Speed limit 80 km/h" />
+
+        <TextView
+            android:id="@+id/signConfidence"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="4dp"
+            android:fontFamily="@font/gotham_rounded_medium"
+            android:textColor="@color/dove_gray"
+            android:textSize="12sp"
+            tools:text="Confidence: 80%" />
+
+    </LinearLayout>
+
 
 </LinearLayout>

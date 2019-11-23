@@ -76,12 +76,13 @@ public class SignAdapter extends RecyclerView.Adapter<SignAdapter.SignViewHolder
     class SignViewHolder extends RecyclerView.ViewHolder {
 
         AppCompatImageView image;
-        TextView signName;
+        TextView signName, signConfidence;
 
         SignViewHolder(View v) {
             super(v);
             image = v.findViewById(R.id.signImg);
             signName = v.findViewById(R.id.signName);
+            signConfidence = v.findViewById(R.id.signConfidence);
         }
 
         void bind(SignEntity sing) {
@@ -89,6 +90,9 @@ public class SignAdapter extends RecyclerView.Adapter<SignAdapter.SignViewHolder
                     .load(sing.getImage())
                     .into(image);
             signName.setText(sing.getName());
+
+            String confidence = String.format("%.2f", sing.getConfidenceDetection()*100).replace(',', '.');
+            signConfidence.setText("Confidence: "+confidence+"%");
         }
 
     }

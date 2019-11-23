@@ -22,7 +22,8 @@ public class SignEntity implements Serializable {
     private Location location;
     @IdRes
     private int soundNotification;
-//    private Location
+    private float confidenceDetection;
+    private float confidenceClassification;
 
     public SignEntity(String name, int image, int soundNotification) {
         this.uuid = UUID.randomUUID();
@@ -30,6 +31,9 @@ public class SignEntity implements Serializable {
         this.image = image;
         this.date = new Date();
         this.soundNotification = soundNotification;
+        confidenceDetection = 0f;
+        confidenceClassification = 0f;
+
 //        this.location = location;
     }
 
@@ -67,6 +71,22 @@ public class SignEntity implements Serializable {
 
     public int getSoundNotification() {
         return soundNotification;
+    }
+
+    public float getConfidenceDetection() {
+        return confidenceDetection;
+    }
+
+    public void setConfidenceDetection(float confidenceDetection) {
+        this.confidenceDetection = confidenceDetection;
+    }
+
+    public float getConfidenceClassification() {
+        return confidenceClassification;
+    }
+
+    public void setConfidenceClassification(float confidenceClassification) {
+        this.confidenceClassification = confidenceClassification;
     }
 
     public boolean isValidSize(Bitmap rgbFrameBitmap) {

@@ -49,10 +49,12 @@ import com.carassistant.model.bus.MessageEventBus;
 import com.carassistant.model.bus.model.EventGpsDisabled;
 import com.carassistant.model.bus.model.EventUpdateLocation;
 import com.carassistant.model.bus.model.EventUpdateStatus;
+import com.carassistant.model.entity.ClassificationEntity;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.GpsStatusEntity;
 import com.carassistant.model.entity.SignEntity;
 import com.carassistant.service.GpsService;
+import com.carassistant.tflite.classification.SpeedLimitClassifier;
 import com.carassistant.tflite.detection.Classifier;
 import com.carassistant.tflite.detection.TFLiteObjectDetectionAPIModel;
 import com.carassistant.tflite.tracking.MultiBoxTracker;
@@ -77,6 +79,8 @@ import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 
 import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
+import static com.carassistant.tflite.classification.SpeedLimitClassifier.MODEL_FILENAME;
+import static com.carassistant.utils.ImageUtils.prepareImageForClassification;
 
 
 public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
@@ -88,7 +92,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private static final int TF_OD_API_INPUT_SIZE = 300;
     private static final boolean TF_OD_API_IS_QUANTIZED = true;
     private static final String TF_OD_API_MODEL_FILE = "detect.tflite";
-    private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/labelmap.txt";
+    private static final String TF_OD_API_LABELS_FILE = "file:///android_asset/detect_labelmap.txt";
     //  private static final DetectorMode MODE = DetectorMode.TF_OD_API;
     // Minimum detection confidence to track a detection.
     private static float MINIMUM_CONFIDENCE_TF_OD_API = 0.7f;
@@ -121,11 +125,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private TextView currentSpeed, distance, satellite, status, accuracy, totalDistance;
     private SignAdapter adapter;
 
-    //    private Ringtone ringtone = null;
-    SwitchCompat notification;
+    private SwitchCompat notification;
     private double distanceValue = 0;
     private CompositeDisposable compositeDisposable;
     private MediaPlayerHolder mediaPlayerHolder;
+
+    SpeedLimitClassifier speedLimitClassifier;
 
     @Inject
     SharedPreferencesManager sharedPreferencesManager;
@@ -145,6 +150,16 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         setCallBack();
 
+        setupClassifier();
+
+    }
+
+    private void setupClassifier() {
+        try {
+            speedLimitClassifier = SpeedLimitClassifier.classifier(getAssets(), MODEL_FILENAME);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void setCallBack() {
@@ -212,7 +227,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         if (data.getLocation().hasSpeed()) {
             double speed = data.getLocation().getSpeed() * 3.6;
-            if (speed > 50){
+            if (speed > 50) {
                 mediaPlayerHolder.loadMedia(R.raw.speed_limit_was_exceeded);
             }
             currentSpeed.setText(String.format("%.0f", speed));
@@ -595,29 +610,37 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         }
 
         if (sign != null) {
+            sign.setConfidenceDetection(result.getConfidence());
+
             sign.setScreenLocation(result.getLocation());
             if (data != null) {
                 sign.setLocation(data.getLocation());
             }
 
-            if (sign.getName().contains("speed") && sign.isValidSize(rgbFrameBitmap)) {
+            if (sign.getName().contains("speed") && sign.isValidSize(rgbFrameBitmap) && speedLimitClassifier != null) {
                 try {
-                    Matrix matrix = new Matrix();
-                    matrix.postRotate(90);
-                    Bitmap crop = Bitmap.createBitmap(rgbFrameBitmap,
-                            (int) sign.getScreenLocation().left,
-                            (int) sign.getScreenLocation().top,
-                            (int) sign.getScreenLocation().width(),
-                            (int) sign.getScreenLocation().height(),
-                            matrix,
-                            true);
-                    Log.i(TAG, new Gson().toJson(sign));
-//                ImageUtils.saveBitmap(crop, sign.getName());
-                } catch (Exception e) {
+                    SignEntity finalSign = sign;
+
+                    runInBackground(
+                            () -> {
+                                Matrix matrix = new Matrix();
+                                matrix.postRotate(90);
+                                Bitmap crop = Bitmap.createBitmap(rgbFrameBitmap,
+                                        (int) finalSign.getScreenLocation().left,
+                                        (int) finalSign.getScreenLocation().top,
+                                        (int) finalSign.getScreenLocation().width(),
+                                        (int) finalSign.getScreenLocation().height(),
+                                        matrix,
+                                        true);
+
+                                List<ClassificationEntity> recognitions =
+                                        speedLimitClassifier.recognizeImage(prepareImageForClassification(crop));
+                                Toast.makeText(DetectorActivity.this, new Gson().toJson(recognitions), Toast.LENGTH_SHORT).show();
+                            });
+
+                } catch (Exception ignored) {
                 }
             }
-
-//            Log.i(TAG, new Gson().toJson(sign));
         }
 
         return sign;
