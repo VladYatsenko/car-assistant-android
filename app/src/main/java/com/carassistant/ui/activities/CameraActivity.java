@@ -402,7 +402,8 @@ public abstract class CameraActivity extends AppCompatActivity
 
     protected boolean hasPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return checkSelfPermission(PERMISSION_CAMERA) == PackageManager.PERMISSION_GRANTED;
+            return checkSelfPermission(PERMISSION_CAMERA) == PackageManager.PERMISSION_GRANTED &&
+                    checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ;
         } else {
             return true;
         }

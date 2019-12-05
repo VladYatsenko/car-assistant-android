@@ -1,6 +1,10 @@
 apply plugin: 'com.android.application'
 apply plugin: 'com.google.gms.google-services'
 
+//pass carassistant
+//alias car_assistant
+//pass carassistant
+
 android {
     compileSdkVersion 28
     buildToolsVersion '28.0.3'
@@ -9,7 +13,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
-        versionName "0.5"
+        versionName "1.0"
         project.ext.set("archivesBaseName", "car-assistant")
     }
     buildTypes {
