@@ -640,7 +640,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                                 List<ClassificationEntity> recognitions =
                                         speedLimitClassifier.recognizeImage(prepareImageForClassification(crop));
 
-                                Toast.makeText(DetectorActivity.this, new Gson().toJson(recognitions), Toast.LENGTH_SHORT).show();
+//                                Toast.makeText(DetectorActivity.this, new Gson().toJson(recognitions), Toast.LENGTH_SHORT).show();
                             });
 
                 } catch (Exception ignored) {
