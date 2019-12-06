@@ -313,7 +313,7 @@ public abstract class CameraActivity extends AppCompatActivity
     public synchronized void onResume() {
         LOGGER.d("onResume " + this);
         super.onResume();
-        if (hasPermission()) {
+        if (hasLocationPermission()) {
             Intent intent = new Intent(this, GpsService.class);
             bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
         }
@@ -368,15 +368,14 @@ public abstract class CameraActivity extends AppCompatActivity
     public void onRequestPermissionsResult(
             final int requestCode, final String[] permissions, final int[] grantResults) {
         if (requestCode == PERMISSIONS_REQUEST) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                    && grantResults[1] == PackageManager.PERMISSION_GRANTED
-                    && grantResults[2] == PackageManager.PERMISSION_GRANTED) {
-                setFragment();
-                Intent intent = new Intent(this, GpsService.class);
-                bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
-            } else {
-//                requestPermission();
+            if (grantResults.length > 0) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    setFragment();
+                }
+                if (grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                    Intent intent = new Intent(this, GpsService.class);
+                    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+                }
             }
         }
     }
@@ -402,8 +401,15 @@ public abstract class CameraActivity extends AppCompatActivity
 
     protected boolean hasPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return checkSelfPermission(PERMISSION_CAMERA) == PackageManager.PERMISSION_GRANTED &&
-                    checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ;
+            return checkSelfPermission(PERMISSION_CAMERA) == PackageManager.PERMISSION_GRANTED;
+        } else {
+            return true;
+        }
+    }
+
+    protected boolean hasLocationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
         } else {
             return true;
         }
@@ -412,7 +418,6 @@ public abstract class CameraActivity extends AppCompatActivity
     protected void requestPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (shouldShowRequestPermissionRationale(PERMISSION_CAMERA) ||
-                    shouldShowRequestPermissionRationale(PERMISSION_STORAGE) ||
                     shouldShowRequestPermissionRationale(ACCESS_FINE_LOCATION)) {
 //                Toast.makeText(
 //                        CameraActivity.this,
@@ -420,7 +425,7 @@ public abstract class CameraActivity extends AppCompatActivity
 //                        Toast.LENGTH_LONG)
 //                        .show();
             }
-            requestPermissions(new String[]{PERMISSION_CAMERA, PERMISSION_STORAGE, ACCESS_FINE_LOCATION}, PERMISSIONS_REQUEST);
+            requestPermissions(new String[]{PERMISSION_CAMERA, ACCESS_FINE_LOCATION}, PERMISSIONS_REQUEST);
         }
     }
 

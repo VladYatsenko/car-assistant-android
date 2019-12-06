@@ -22,6 +22,7 @@ import android.location.LocationManager;
 import android.media.ImageReader.OnImageAvailableListener;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -30,6 +31,7 @@ import android.text.style.RelativeSizeSpan;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
+import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -293,6 +295,12 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
             }
         });
+
+        findViewById(R.id.privacyPolicy).setOnClickListener(v -> {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://drive.google.com/open?id=1tKa1WpGUJa8JbU56JfwgOybr3or_Slgx"));
+            startActivity(browserIntent);
+        });
+
         showTotalDistance();
 
     }
