@@ -1,10 +1,7 @@
 package com.carassistant.ui.activities;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -14,16 +11,9 @@ import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.location.GpsSatellite;
-import android.location.GpsStatus;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.media.ImageReader.OnImageAvailableListener;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.SpannableString;
@@ -31,12 +21,10 @@ import android.text.style.RelativeSizeSpan;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
-import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
@@ -51,7 +39,6 @@ import com.carassistant.model.bus.MessageEventBus;
 import com.carassistant.model.bus.model.EventGpsDisabled;
 import com.carassistant.model.bus.model.EventUpdateLocation;
 import com.carassistant.model.bus.model.EventUpdateStatus;
-import com.carassistant.model.entity.ClassificationEntity;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.GpsStatusEntity;
 import com.carassistant.model.entity.SignEntity;
@@ -80,9 +67,7 @@ import javax.inject.Inject;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 
-import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
 import static com.carassistant.tflite.classification.SpeedLimitClassifier.MODEL_FILENAME;
-import static com.carassistant.utils.ImageUtils.prepareImageForClassification;
 
 
 public class DetectorActivity extends CameraActivity implements OnImageAvailableListener {
@@ -626,34 +611,34 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
                 sign.setLocation(data.getLocation());
             }
 
-            if (sign.getName().contains("speed")
-                    && sign.isValidSize(rgbFrameBitmap)
-                    && speedLimitClassifier != null
-                    && classifier.isChecked()) {
-                try {
-                    SignEntity finalSign = sign;
-
-                    runInBackground(
-                            () -> {
-                                Matrix matrix = new Matrix();
-                                matrix.postRotate(90);
-                                Bitmap crop = Bitmap.createBitmap(rgbFrameBitmap,
-                                        (int) finalSign.getScreenLocation().left,
-                                        (int) finalSign.getScreenLocation().top,
-                                        (int) finalSign.getScreenLocation().width(),
-                                        (int) finalSign.getScreenLocation().height(),
-                                        matrix,
-                                        true);
-
-                                List<ClassificationEntity> recognitions =
-                                        speedLimitClassifier.recognizeImage(prepareImageForClassification(crop));
-
-//                                Toast.makeText(DetectorActivity.this, new Gson().toJson(recognitions), Toast.LENGTH_SHORT).show();
-                            });
-
-                } catch (Exception ignored) {
-                }
-            }
+//            if (sign.getName().contains("speed")
+//                    && sign.isValidSize(rgbFrameBitmap)
+//                    && speedLimitClassifier != null
+//                    && classifier.isChecked()) {
+//                try {
+//                    SignEntity finalSign = sign;
+//
+//                    runInBackground(
+//                            () -> {
+//                                Matrix matrix = new Matrix();
+//                                matrix.postRotate(90);
+//                                Bitmap crop = Bitmap.createBitmap(rgbFrameBitmap,
+//                                        (int) finalSign.getScreenLocation().left,
+//                                        (int) finalSign.getScreenLocation().top,
+//                                        (int) finalSign.getScreenLocation().width(),
+//                                        (int) finalSign.getScreenLocation().height(),
+//                                        matrix,
+//                                        true);
+//
+//                                List<ClassificationEntity> recognitions =
+//                                        speedLimitClassifier.recognizeImage(prepareImageForClassification(crop));
+//
+////                                Toast.makeText(DetectorActivity.this, new Gson().toJson(recognitions), Toast.LENGTH_SHORT).show();
+//                            });
+//
+//                } catch (Exception ignored) {
+//                }
+//            }
         }
 
         return sign;

@@ -12,13 +12,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.carassistant.R;
-import com.carassistant.di.scopes.ScreenScope;
 import com.carassistant.model.entity.SignEntity;
 
 import java.util.ArrayList;
-import java.util.List;
-
-import javax.inject.Inject;
 
 //@ScreenScope
 public class SignAdapter extends RecyclerView.Adapter<SignAdapter.SignViewHolder> {
