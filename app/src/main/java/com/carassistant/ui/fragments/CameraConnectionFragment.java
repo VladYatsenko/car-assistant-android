@@ -413,50 +413,47 @@ public class CameraConnectionFragment extends Fragment {
 
         cameraConnectionCallback.onPreviewSizeChosen(previewSize, sensorOrientation);
 
-        overlayView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                try {
-                    Rect rect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
-                    if (rect == null) return false;
-                    float currentFingerSpacing;
+        overlayView.setOnTouchListener((v, event) -> {
+            try {
+                Rect rect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE);
+                if (rect == null) return false;
+                float currentFingerSpacing;
 
-                    if (event.getPointerCount() == 2) { //Multi touch.
-                        currentFingerSpacing = getFingerSpacing(event);
-                        float delta = 0.05f; //Control this value to control the zooming sensibility
-                        if (fingerSpacing != 0) {
-                            if (currentFingerSpacing > fingerSpacing) { //Don't over zoom-in
-                                if ((maximumZoomLevel - zoomLevel) <= delta) {
-                                    delta = maximumZoomLevel - zoomLevel;
-                                }
-                                zoomLevel = zoomLevel + delta;
-                            } else if (currentFingerSpacing < fingerSpacing){ //Don't over zoom-out
-                                if ((zoomLevel - delta) < 1f) {
-                                    delta = zoomLevel - 1f;
-                                }
-                                zoomLevel = zoomLevel - delta;
+                if (event.getPointerCount() == 2) { //Multi touch.
+                    currentFingerSpacing = getFingerSpacing(event);
+                    float delta = 0.05f; //Control this value to control the zooming sensibility
+                    if (fingerSpacing != 0) {
+                        if (currentFingerSpacing > fingerSpacing) { //Don't over zoom-in
+                            if ((maximumZoomLevel - zoomLevel) <= delta) {
+                                delta = maximumZoomLevel - zoomLevel;
                             }
-                            float ratio = (float) 1 / zoomLevel; //This ratio is the ratio of cropped Rect to Camera's original(Maximum) Rect
-                            //croppedWidth and croppedHeight are the pixels cropped away, not pixels after cropped
-                            int croppedWidth = rect.width() - Math.round((float)rect.width() * ratio);
-                            int croppedHeight = rect.height() - Math.round((float)rect.height() * ratio);
-                            //Finally, zoom represents the zoomed visible area
-                            zoom = new Rect(croppedWidth/2, croppedHeight/2,
-                                    rect.width() - croppedWidth/2, rect.height() - croppedHeight/2);
-                            previewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoom);
+                            zoomLevel = zoomLevel + delta;
+                        } else if (currentFingerSpacing < fingerSpacing){ //Don't over zoom-out
+                            if ((zoomLevel - delta) < 1f) {
+                                delta = zoomLevel - 1f;
+                            }
+                            zoomLevel = zoomLevel - delta;
                         }
-                        fingerSpacing = currentFingerSpacing;
-                    } else { //Single touch point, needs to return true in order to detect one more touch point
-                        return true;
+                        float ratio = (float) 1 / zoomLevel; //This ratio is the ratio of cropped Rect to Camera's original(Maximum) Rect
+                        //croppedWidth and croppedHeight are the pixels cropped away, not pixels after cropped
+                        int croppedWidth = rect.width() - Math.round((float)rect.width() * ratio);
+                        int croppedHeight = rect.height() - Math.round((float)rect.height() * ratio);
+                        //Finally, zoom represents the zoomed visible area
+                        zoom = new Rect(croppedWidth/2, croppedHeight/2,
+                                rect.width() - croppedWidth/2, rect.height() - croppedHeight/2);
+                        previewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, zoom);
                     }
-                    captureSession.setRepeatingRequest(previewRequestBuilder.build(), captureCallback, null);
-                    return true;
-                } catch (final Exception e) {
-                    //Error handling up to you
+                    fingerSpacing = currentFingerSpacing;
+                } else { //Single touch point, needs to return true in order to detect one more touch point
                     return true;
                 }
-
+                captureSession.setRepeatingRequest(previewRequestBuilder.build(), captureCallback, null);
+                return true;
+            } catch (final Exception e) {
+                //Error handling up to you
+                return true;
             }
+
         });
 
     }
