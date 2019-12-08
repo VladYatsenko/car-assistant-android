@@ -21,7 +21,6 @@ public class SignAdapter extends RecyclerView.Adapter<SignAdapter.SignViewHolder
 
     private Context context;
     private ArrayList<SignEntity> signs;
-
 //    @Inject
     public SignAdapter(Context context) {
         this.context = context;

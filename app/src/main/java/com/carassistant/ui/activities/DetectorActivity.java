@@ -61,9 +61,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 
@@ -124,11 +126,20 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
     private final String SIGN_LIST = "sign_list";
     private final String DISTANCE = "distance";
+    private Boolean notificationSpeed = true;
 
+    @SuppressLint("CheckResult")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mediaPlayerHolder = new MediaPlayerHolder(this);
+
+        Observable.interval(30L, TimeUnit.SECONDS)
+                .timeInterval()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(v->{
+                    notificationSpeed = true;
+                });
 
         inject();
         setupLocation();
@@ -214,7 +225,8 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
 
         if (data.getLocation().hasSpeed()) {
             double speed = data.getLocation().getSpeed() * 3.6;
-            if (speed > 50) {
+            if (speed > 50 && notification.isChecked() && notificationSpeed) {
+                notificationSpeed = false;
                 mediaPlayerHolder.loadMedia(R.raw.speed_limit_was_exceeded);
             }
             currentSpeed.setText(String.format("%.0f", speed));
@@ -477,7 +489,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
     private boolean isLocationDifferenceValid(Location location1, Location location2) {
         if (location1 == null || location2 == null)
             return false;
-        return location1.distanceTo(location2) > 5;
+        return location1.distanceTo(location2) > 50;
     }
 
     @SuppressLint("DefaultLocale")
