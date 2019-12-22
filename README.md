@@ -4,4 +4,5 @@ This is a camera app that continuously detects the traffic signs in the frames s
 
 <img src="screens/stop.gif" alt="" width="250"/>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/RFsqi6xf3fw" allowfullscreen/>
+### Testing
+[![](http://img.youtube.com/vi/RFsqi6xf3fw/0.jpg)](http://www.youtube.com/watch?v=RFsqi6xf3fw "")
