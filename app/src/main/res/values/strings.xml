@@ -4,6 +4,6 @@
     <string name="request_permission">This sample needs camera permission.</string>
     <string name="camera_error">This device doesn\'t support Camera2 API.</string>
     <string name="gps_disabled">GPS disabled</string>
-    <string name="please_enable_gps">In order to use this app you need the GPS to be enabled.</string>
+    <string name="please_enable_gps">In order to get current speed the GPS must be enabled.</string>
     <string name="waiting_for_fix">Waiting for GPS fix</string>
 </resources>
