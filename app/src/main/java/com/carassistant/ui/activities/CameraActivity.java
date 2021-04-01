@@ -17,39 +17,30 @@
 package com.carassistant.ui.activities;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Fragment;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.params.StreamConfigurationMap;
+import android.location.GpsSatellite;
+import android.location.GpsStatus;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.media.Image;
 import android.media.Image.Plane;
 import android.media.ImageReader;
 import android.media.ImageReader.OnImageAvailableListener;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.IBinder;
 import android.os.Trace;
-
-import androidx.annotation.NonNull;
-
-import com.carassistant.application.CarAssistantApplication;
-import com.carassistant.di.components.ApplicationComponent;
-import com.carassistant.service.GpsService;
-import com.google.android.material.bottomsheet.BottomSheetBehavior;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SwitchCompat;
-import androidx.appcompat.widget.Toolbar;
-
 import android.util.Size;
 import android.view.Surface;
 import android.view.View;
@@ -60,16 +51,30 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
+import androidx.appcompat.widget.Toolbar;
+
 import com.carassistant.R;
+import com.carassistant.application.CarAssistantApplication;
+import com.carassistant.di.components.ApplicationComponent;
+import com.carassistant.model.bus.MessageEventBus;
+import com.carassistant.model.bus.model.EventGpsDisabled;
+import com.carassistant.model.bus.model.EventUpdateLocation;
+import com.carassistant.model.bus.model.EventUpdateStatus;
+import com.carassistant.model.entity.Data;
+import com.carassistant.model.entity.GpsStatusEntity;
 import com.carassistant.ui.fragments.CameraConnectionFragment;
 import com.carassistant.ui.fragments.LegacyCameraConnectionFragment;
 import com.carassistant.utils.env.ImageUtils;
 import com.carassistant.utils.env.Logger;
-
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 
 import java.nio.ByteBuffer;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.location.GpsStatus.GPS_EVENT_SATELLITE_STATUS;
 
 public abstract class CameraActivity extends AppCompatActivity
         implements OnImageAvailableListener,
@@ -104,6 +109,15 @@ public abstract class CameraActivity extends AppCompatActivity
     private ImageView plusImageView, minusImageView;
     private SwitchCompat apiSwitchCompat;
     private TextView threadsTextView;
+
+    private LocationManager mLocationManager;
+    double currentLon = 0;
+    double currentLat = 0;
+    double lastLon = 0;
+    double lastLat = 0;
+
+    Location lastlocation = new Location("last");
+    Data data;
 
     @Override
     protected void onCreate(final Bundle savedInstanceState) {
@@ -314,8 +328,7 @@ public abstract class CameraActivity extends AppCompatActivity
         LOGGER.d("onResume " + this);
         super.onResume();
         if (hasLocationPermission()) {
-            Intent intent = new Intent(this, GpsService.class);
-            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+            setupLocation();
         }
 
         handlerThread = new HandlerThread("inference");
@@ -323,14 +336,24 @@ public abstract class CameraActivity extends AppCompatActivity
         handler = new Handler(handlerThread.getLooper());
     }
 
+    private void setupLocation(){
+        mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+        mLocationManager.addGpsStatusListener(gpsStatus);
+        mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500, 0, locationListener);
+
+        if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            MessageEventBus.INSTANCE.send(new EventGpsDisabled());
+        }
+    }
+
     @Override
     public synchronized void onPause() {
         LOGGER.d("onPause " + this);
 
-        if (mBound) {
-            unbindService(serviceConnection);
-            mBound = false;
-        }
+//        if (mBound) {
+//            unbindService(serviceConnection);
+//            mBound = false;
+//        }
 
         handlerThread.quitSafely();
         try {
@@ -356,6 +379,9 @@ public abstract class CameraActivity extends AppCompatActivity
         LOGGER.d("onDestroy " + this);
 
         super.onDestroy();
+
+        mLocationManager.removeUpdates(locationListener);
+        mLocationManager.removeGpsStatusListener(gpsStatus);
     }
 
     protected synchronized void runInBackground(final Runnable r) {
@@ -373,31 +399,13 @@ public abstract class CameraActivity extends AppCompatActivity
                     setFragment();
                 }
                 if (grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                    Intent intent = new Intent(this, GpsService.class);
-                    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+                    setupLocation();
+//                    Intent intent = new Intent(this, GpsService.class);
+//                    bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
                 }
             }
         }
     }
-
-    protected GpsService mService;
-    protected boolean mBound = false;
-    protected ServiceConnection serviceConnection = new ServiceConnection() {
-
-        @Override
-        public void onServiceConnected(ComponentName className,
-                                       IBinder service) {
-            // We've bound to LocalService, cast the IBinder and get LocalService instance
-            GpsService.GpsServiceBinder binder = (GpsService.GpsServiceBinder) service;
-            mService = binder.getService();
-            mBound = true;
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName arg0) {
-            mBound = false;
-        }
-    };
 
     protected boolean hasPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -596,4 +604,112 @@ public abstract class CameraActivity extends AppCompatActivity
     protected abstract void setNumThreads(int numThreads);
 
     protected abstract void setUseNNAPI(boolean isChecked);
+
+    private LocationListener locationListener = new LocationListener() {
+
+        @Override
+        public void onLocationChanged(Location location) {
+            data = new Data();
+            data.setLocation(location);
+            currentLat = location.getLatitude();
+            currentLon = location.getLongitude();
+
+            double distance = 0;
+
+            if (lastLat != 0 && lastLon != 0){
+                lastlocation.setLatitude(lastLat);
+                lastlocation.setLongitude(lastLon);
+                distance = lastlocation.distanceTo(location);
+            }
+
+            if (location.getAccuracy() < distance || distance == 0) {
+                data.setDistance(distance);
+                lastLat = currentLat;
+                lastLon = currentLon;
+            }
+
+            if (location.hasSpeed()) {
+                data.setCurSpeed(location.getSpeed() * 3.6);
+                if (location.getSpeed() == 0) {
+                    new isStillStopped().execute();
+                }
+            }
+
+            MessageEventBus.INSTANCE.send(new EventUpdateLocation(data));
+        }
+
+        @Override
+        public void onStatusChanged(String s, int i, Bundle bundle) {
+
+        }
+
+        @Override
+        public void onProviderEnabled(String s) {
+
+        }
+
+        @Override
+        public void onProviderDisabled(String s) {
+
+        }
+    };
+
+    private class isStillStopped extends AsyncTask<Void, Integer, String> {
+        int timer = 0;
+
+        @Override
+        protected String doInBackground(Void... unused) {
+            try {
+                while (data.getCurSpeed() == 0) {
+                    Thread.sleep(1000);
+                    timer++;
+                }
+            } catch (InterruptedException t) {
+                return ("The sleep operation failed");
+            }
+            return ("return object when task is finished");
+        }
+
+        @Override
+        protected void onPostExecute(String message) {
+            data.setTimeStopped(timer);
+        }
+    }
+
+    private GpsStatus.Listener gpsStatus = event -> {
+        switch (event) {
+            case GPS_EVENT_SATELLITE_STATUS:
+                @SuppressLint("MissingPermission") GpsStatus gpsStatus = mLocationManager.getGpsStatus(null);
+                int satsInView = 0;
+                int satsUsed = 0;
+                Iterable<GpsSatellite> sats = gpsStatus.getSatellites();
+                for (GpsSatellite sat : sats) {
+                    satsInView++;
+                    if (sat.usedInFix()) {
+                        satsUsed++;
+                    }
+                }
+
+                String satellite = satsUsed + "/" + satsInView;
+                String accuracy = null;
+                String status = null;
+                if (satsUsed == 0) {
+                    accuracy = "";
+                    status = getResources().getString(R.string.waiting_for_fix);
+                }
+
+                MessageEventBus.INSTANCE.send(new EventUpdateStatus(new GpsStatusEntity(satellite, status, accuracy)));
+
+                break;
+
+            case GpsStatus.GPS_EVENT_STOPPED:
+                if (!mLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    MessageEventBus.INSTANCE.send(new EventGpsDisabled());
+                }
+                break;
+            case GpsStatus.GPS_EVENT_FIRST_FIX:
+                break;
+        }
+    };
+
 }

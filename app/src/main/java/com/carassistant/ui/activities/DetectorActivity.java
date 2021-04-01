@@ -42,7 +42,6 @@ import com.carassistant.model.bus.model.EventUpdateStatus;
 import com.carassistant.model.entity.Data;
 import com.carassistant.model.entity.GpsStatusEntity;
 import com.carassistant.model.entity.SignEntity;
-import com.carassistant.service.GpsService;
 import com.carassistant.tflite.classification.SpeedLimitClassifier;
 import com.carassistant.tflite.detection.Classifier;
 import com.carassistant.tflite.detection.TFLiteObjectDetectionAPIModel;
@@ -137,7 +136,7 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         Observable.interval(30L, TimeUnit.SECONDS)
                 .timeInterval()
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(v->{
+                .subscribe(v -> {
                     notificationSpeed = true;
                 });
 
@@ -557,14 +556,20 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(getString(R.string.gps_disabled))
                 .setMessage(getString(R.string.please_enable_gps))
+                .setNegativeButton(android.R.string.cancel, (dialog, id) -> {
+                    dialog.cancel();
+                })
                 .setPositiveButton(android.R.string.ok, (dialog, id) -> {
                     startActivity(new Intent("android.settings.LOCATION_SOURCE_SETTINGS"));
                 });
         AlertDialog dialog = builder.create();
-        dialog.setCancelable(false);
-        dialog.setOnShowListener(arg ->
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                        .setTextColor(ContextCompat.getColor(this, R.color.cod_gray))
+        dialog.setCancelable(true);
+        dialog.setOnShowListener(arg -> {
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                            .setTextColor(ContextCompat.getColor(this, R.color.cod_gray));
+                    dialog.getButton(AlertDialog.BUTTON_NEGATIVE)
+                            .setTextColor(ContextCompat.getColor(this, R.color.cod_gray));
+                }
         );
         dialog.show();
     }
@@ -663,7 +668,6 @@ public class DetectorActivity extends CameraActivity implements OnImageAvailable
             compositeDisposable.dispose();
             compositeDisposable = null;
         }
-        stopService(new Intent(getBaseContext(), GpsService.class));
     }
 
     private void inject() {
